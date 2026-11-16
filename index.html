@@ -21,10 +21,12 @@ main{max-width:780px;margin:0 auto;padding:6px 16px 60px}
 .steps{display:flex;gap:8px;margin-bottom:10px}
 .chip{flex:1;text-align:center;padding:8px 4px;border-radius:10px;border:1px solid var(--line);color:var(--mut);font-size:13px}
 .chip.on{border-color:var(--acc);color:var(--tx)}.chip.done{border-color:var(--good);color:var(--good)}
-.stage{position:relative;width:100%;aspect-ratio:3/4;max-height:68vh;background:#000;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.stage{position:relative;width:min(100%,calc(68vh*3/4));margin:0 auto;aspect-ratio:3/4;background:#000;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .stage video,.stage img{width:100%;height:100%;object-fit:cover}
 #video{transform:scaleX(-1)}
 .oval{position:absolute;left:50%;top:50%;width:62%;height:74%;transform:translate(-50%,-50%);border:2px dashed rgba(124,196,255,.7);border-radius:50%;pointer-events:none}
+.oval.ok{border:3px solid #6fdc9a}.oval.bad{border:3px solid #ffb020}
+#guide{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;filter:drop-shadow(0 1px 3px #000)}
 .count{position:absolute;font-size:72px;font-weight:700;color:#fff;text-shadow:0 2px 12px #000}
 .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
 button{background:var(--acc);color:#04121d;border:0;border-radius:10px;padding:10px 14px;font-weight:600;font-size:14px;cursor:pointer}
@@ -54,7 +56,7 @@ label.chk{font-size:13px;color:var(--mut);display:flex;gap:6px;align-items:cente
 <body>
 <header>
   <h1>Sculpt<span>Local</span> <span style="font-size:12px;color:var(--mut)">v2</span></h1>
-  <div class="sub">Careful face measurement, on this device only. It reports measurements with their uncertainty. It does not rate your looks.</div>
+  <div class="sub">Personal-study face measurement, on this device only. Every reading comes with its uncertainty, a plain-language meaning, and published reference values where they exist.</div>
 </header>
 <nav>
   <button class="on" data-tab="scan">Scan</button>
@@ -71,6 +73,7 @@ label.chk{font-size:13px;color:var(--mut);display:flex;gap:6px;align-items:cente
       <video id="video" playsinline muted class="hidden"></video>
       <img id="shot" class="hidden" alt="captured photo">
       <div class="oval" id="oval"></div>
+      <svg id="guide" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid meet"></svg>
       <div class="count hidden" id="count"></div>
       <div class="hint" id="placeholder" style="padding:20px;text-align:center">Start the camera, or upload a photo.</div>
     </div>
@@ -80,7 +83,7 @@ label.chk{font-size:13px;color:var(--mut);display:flex;gap:6px;align-items:cente
     <div class="warn" id="warn"></div>
     <div class="err" id="err"></div>
     <div class="row" id="controls"></div>
-    <div class="row"><label class="chk"><input type="checkbox" id="auto"> Auto-capture when pose is good</label></div>
+    <div class="row"><label class="chk"><input type="checkbox" id="auto" checked> Auto-capture when pose is good</label></div>
     <input type="file" id="file" accept="image/*" class="hidden">
     <input type="file" id="fileCam" accept="image/*" capture="user" class="hidden">
   </div>
@@ -106,11 +109,22 @@ label.chk{font-size:13px;color:var(--mut);display:flex;gap:6px;align-items:cente
     <div class="small">A measurement tool. It finds 478 landmarks on your photo with Google's MediaPipe Face Mesh, computes distances, angles and ratios from the front view, and tells you how noisy each number is. It has no beauty score on purpose.</div>
   </div>
   <div class="card">
-    <h3>Why there is no "harmony index"</h3>
+    <h3>How the Harmony index works, and what it can't tell you</h3>
     <ul class="small">
-      <li>The classical "ideal" proportions (equal facial thirds, eye-width spacing and similar) rarely hold in real, normal faces. Studies on <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3532441/" target="_blank" rel="noopener">Southern Chinese</a>, Greek and <a href="https://head-face-med.biomedcentral.com/articles/10.1186/s13005-015-0064-y" target="_blank" rel="noopener">Arabian Peninsula</a> adults found most people do not match them. So this app does not grade you against them.</li>
-      <li>Facial symmetry is a small factor in attractiveness research, and its link to actual health is weak. A study of 4,732 teenagers from the ALSPAC cohort found <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC4150332" target="_blank" rel="noopener">no association between facial asymmetry and childhood health</a>.</li>
-      <li>The one published "ideal" that is based on average faces is Pallett et al. 2010: <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2814183" target="_blank" rel="noopener">eyes-to-mouth about 36% of face length, eye spacing about 46% of face width</a>, tested on young white female faces, where the optimum matched the average. The app shows your values next to these as a reference point, not a target. Its landmarks differ from that paper's (see below).</li>
+      <li>It averages how closely you match six classical proportion rules (the "neoclassical canons"). Each rule scores 100 at the ideal ratio and falls to 0 at 30% away. The 30% and the ±10% "within" band are my own choices.</li>
+      <li>The studies behind these rules found they are rarely met even in healthy, good-looking people. Southern Chinese adults (<a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3532441/" target="_blank" rel="noopener">n=103</a>) met the best canon only 19% of the time and the equal-thirds and orbital canons 0%. <a href="https://head-face-med.biomedcentral.com/articles/10.1186/s13005-015-0064-y" target="_blank" rel="noopener">Arabian Peninsula adults</a> (n=168) did not show equal thirds or the eye canons. <a href="https://www.pubmed.gov/23147325/" target="_blank" rel="noopener">Greek adults</a> mostly did not conform either. A mid or low index is normal.</li>
+      <li>The index is a descriptive personal-study number. It has not been validated as a measure of attractiveness or health, and there is no published average for it.</li>
+      <li>Facial symmetry is one factor in attractiveness research, but its link to actual health is weak: a study of <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC4150332" target="_blank" rel="noopener">4,732 teenagers</a> found no association between facial asymmetry and childhood health.</li>
+      <li>The Pallett et al. 2010 values (<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2814183" target="_blank" rel="noopener">eyes-to-mouth about 36% of face length, eye spacing about 46% of face width</a>) come from average young white female faces, so they may not fit everyone.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>Other populations studied</h3>
+    <ul class="small">
+      <li><a href="https://link.springer.com/doi/10.1007/s00266-001-0033-7" target="_blank" rel="noopener">Chinese, Vietnamese and Thai adults vs North American Caucasians</a> (Farkas group): the canons were met more often in Caucasians (16.7–36.7%) than in Asians (1.7–26.7%). Asian faces had a wider inner-eye gap relative to eye width, a wider nose, a smaller mouth, and a lower face smaller than the forehead.</li>
+      <li><a href="https://www.mdpi.com/1943-3883/16/1/8" target="_blank" rel="noopener">Kenyans of Indian descent</a>: orbital canon met by about 20%, orbitonasal 14.5–18.9%, naso-oral 16.4–17.6%.</li>
+      <li><a href="https://thieme-connect.de/products/ejournals/pdf/10.1055/s-0043-1761596.pdf" target="_blank" rel="noopener">South Indian (Keralite) adults</a>: the average face was wider, longer and rounder than published norms, and none of the facial proportions fit the canons.</li>
+      <li>Left-right norms: <a href="https://researchportal.murdoch.edu.au/esploro/outputs/journalArticle/Three-dimensional-assessment-of-facial-asymmetry-using/991005592651907891" target="_blank" rel="noopener">Raine Study (n=279)</a> and <a href="https://synapse.koreamed.org/articles/1081025" target="_blank" rel="noopener">a Korean CBCT study (n=48)</a>.</li>
     </ul>
   </div>
   <div class="card">
@@ -224,6 +238,47 @@ function exp3D(lm,w,h){
   const l=g(234),r=g(454);
   return {chin3D:chin, jaw3D:d(a,b)/d(l,r), yaw3:Math.atan2(r[2]-l[2],r[0]-l[0])*180/Math.PI};
 }
+
+/* ---------- classical canons, sides, midline (front scan) ---------- */
+const CANON_IDEAL={cOrbital:1,cOrbNasal:1,cNasoOral:1.5,cNasoFacial:0.25,cMidLower:1,cLowerSplit:0.5};
+function canonScore(m){
+  let tot=0,n=0,met=0;
+  for(const k in CANON_IDEAL){const r=m[k];if(!Number.isFinite(r))continue;const dev=Math.abs(r/CANON_IDEAL[k]-1);tot+=clamp(100*(1-dev/0.30),0,100);n++;if(dev<=0.10)met++;}
+  return n?{harmony:tot/n,canonsMet:met}:{harmony:NaN,canonsMet:NaN};
+}
+function canonMetrics(lm,w,h){
+  const p=i=>[lm[i].x*w,lm[i].y*h], d=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+  const H=d(p(10),p(152)), hasIris=lm.length>=478;
+  const pr=hasIris?p(468):[(p(33)[0]+p(133)[0])/2,(p(33)[1]+p(133)[1])/2];
+  const pl=hasIris?p(473):[(p(263)[0]+p(362)[0])/2,(p(263)[1]+p(362)[1])/2];
+  const ipd=d(pr,pl), phi=Math.atan2(pl[1]-pr[1],pl[0]-pr[0]), c=Math.cos(phi), s=Math.sin(phi);
+  const q=i=>{const P=p(i);return [P[0]*c+P[1]*s,-P[0]*s+P[1]*c];};
+  const mx=(pr[0]*c+pr[1]*s+pl[0]*c+pl[1]*s)/2;
+  const sx=i=>(q(i)[0]-mx)/H*100, sy=i=>q(i)[1]/H*100;   // sx>0 = toward YOUR left; sy>0 = lower
+  const ax=[(p(152)[0]-p(10)[0])/H,(p(152)[1]-p(10)[1])/H];
+  const projP=P=>(P[0]-p(10)[0])*ax[0]+(P[1]-p(10)[1])*ax[1], proj=i=>projP(p(i));
+  const sto=[(p(13)[0]+p(14)[0])/2,(p(13)[1]+p(14)[1])/2];
+  const t1=proj(168), t2=proj(2)-proj(168), t3=proj(152)-proj(2);
+  const snSto=projP(sto)-proj(2), stoGn=proj(152)-projP(sto);
+  const ICD=d(p(133),p(362)), EFLr=d(p(33),p(133)), EFLl=d(p(263),p(362)), EFL=(EFLr+EFLl)/2;
+  const NW=d(p(129),p(358)), MW=d(p(61),p(291)), ZY=d(p(234),p(454));
+  const m={
+    hIpd:H/ipd, icdIpd:ICD/ipd, eflIpd:EFL/ipd, nwIpd:NW/ipd, mwIpd:MW/ipd, zyIpd:ZY/ipd,
+    t1Ipd:t1/ipd, t2Ipd:t2/ipd, t3Ipd:t3/ipd,
+    cOrbital:ICD/EFL, cOrbNasal:ICD/NW, cNasoOral:MW/NW, cNasoFacial:NW/ZY, cMidLower:t2/t3, cLowerSplit:snSto/stoGn, fifths:ZY/EFL,
+    eyeW_R:EFLr/H*100, eyeW_L:EFLl/H*100,
+    eyeH_R:d(p(159),p(145))/H*100, eyeH_L:d(p(386),p(374))/H*100,
+    brow_R:sy(159)-sy(105), brow_L:sy(386)-sy(334),
+    eyeMid_R:Math.abs(sx(133)), eyeMid_L:Math.abs(sx(362)),
+    zyMid_R:Math.abs(sx(234)), zyMid_L:Math.abs(sx(454)),
+    alMid_R:Math.abs(sx(129)), alMid_L:Math.abs(sx(358)),
+    mouthMid_R:Math.abs(sx(61)), mouthMid_L:Math.abs(sx(291)),
+    jawMid_R:Math.abs(sx(58)), jawMid_L:Math.abs(sx(288)),
+    mouthTilt:sy(61)-sy(291), noseDev:sx(1), mouthDev:sx(13), chinDev:sx(152)
+  };
+  return Object.assign(m,canonScore(m));
+}
+
 // skin texture / colour spread / lighting / sharpness, front scans only
 function skinAndLight(canvas,lm){
   const W=canvas.width,Hh=canvas.height, px=i=>[lm[i].x*W,lm[i].y*Hh];
@@ -340,14 +395,14 @@ async function runScan(canvases){
     for(const c of canvases){
       const r=await detect(c), lm=r.multiFaceLandmarks&&r.multiFaceLandmarks[0];
       if(!lm) continue;
-      const m=Object.assign(metrics2D(lm,c.width,c.height),exp3D(lm,c.width,c.height),key==='front'?skinAndLight(c,lm):{});
+      const m=Object.assign(metrics2D(lm,c.width,c.height),exp3D(lm,c.width,c.height),key==='front'?canonMetrics(lm,c.width,c.height):{},key==='front'?skinAndLight(c,lm):{});
       samples.push({lm,w:c.width,h:c.height,m,canvas:c});
     }
     if(samples.length<Math.ceil(canvases.length/2)){
       busy=false;$('#warn').textContent='';$('#err').textContent='Face not found reliably ('+samples.length+' of '+canvases.length+'). Check light and framing.';controls();return;
     }
     const mid=samples[Math.floor(samples.length/2)];
-    scans[key]={samples,sum:summarise(samples),url:mid.canvas.toDataURL('image/jpeg',.85),canvas:mid.canvas,lm:mid.lm};
+    scans[key]={samples,sum:summarise(samples),url:mid.canvas.toDataURL('image/jpeg',.85),canvas:mid.canvas,lm:mid.lm,kept:false};
     busy=false;showLive();
   }catch(e){busy=false;$('#warn').textContent='';$('#err').textContent='Landmark model failed: '+(e.message||e)+'. Keep the mp/ folder next to index.html and open the page via http://localhost.';controls();}
 }
@@ -357,24 +412,55 @@ $('#fileCam').onchange=$('#file').onchange=async e=>{
 };
 
 /* ================= live guidance ================= */
-function scheduleLive(){clearTimeout(live.timer);live.timer=setTimeout(liveTick,600);}
+function scheduleLive(){clearTimeout(live.timer);live.timer=setTimeout(liveTick,350);}
+function guidance(m,key){
+  if(m.faceFrac<0.45) return {kind:'closer',text:'Move closer'};
+  if(m.faceFrac>0.68) return {kind:'farther',text:'Move back a little'};
+  if(key==='front'){
+    if(Math.abs(m.roll)>3) return {kind:'roll',dir:m.roll>0?'cw':'ccw',text:'Tilt your head this way'};
+    const dn=m.noseR-0.5;
+    if(Math.abs(dn)>0.04) return {kind:'turn',dir:dn>0?'right':'left',text:'Turn your face this way'};
+    if(m.mouthOpen>0.06) return {kind:'text',text:'Close your mouth'};
+    if(m.eyeOpen<0.18) return {kind:'text',text:'Open your eyes wide'};
+  }else{
+    if(Math.abs(m.roll)>5) return {kind:'roll',dir:m.roll>0?'cw':'ccw',text:'Keep your head level'};
+    const y=Math.abs(m.yaw3),toward=key==='left'?'left':'right';
+    if(y<25) return {kind:'turn',dir:toward,text:'Turn more this way'};
+    if(y>65) return {kind:'turn',dir:toward==='left'?'right':'left',text:'Turn back a little'};
+  }
+  return {ok:true,kind:'text',text:'Perfect'};
+}
+function drawGuide(g){
+  const o=$('#oval'),col=g.ok?'#6fdc9a':'#ffb020';
+  o.classList.toggle('ok',!!g.ok);o.classList.toggle('bad',!g.ok);
+  let t=`<defs><marker id="ah" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="3" markerHeight="3" orient="auto"><path d="M0 0L10 5L0 10z" fill="${col}"/></marker></defs>`;
+  const A=d=>`<path d="${d}" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round" marker-end="url(#ah)"/>`;
+  if(g.kind==='roll') t+=g.dir==='cw'?A('M45 95 Q150 5 255 95'):A('M255 95 Q150 5 45 95');
+  else if(g.kind==='turn') t+=g.dir==='right'?A('M75 300 L230 300'):A('M225 300 L70 300');
+  else if(g.kind==='closer') t+=A('M75 85 L25 35')+A('M225 85 L275 35')+A('M75 250 L25 300')+A('M225 250 L275 300');
+  else if(g.kind==='farther') t+=A('M25 35 L75 85')+A('M275 35 L225 85')+A('M25 300 L75 250')+A('M275 300 L225 250');
+  t+=`<rect x="15" y="352" width="270" height="38" rx="19" fill="rgba(0,0,0,.7)"/><text x="150" y="378" text-anchor="middle" font-size="19" font-weight="700" fill="${col}" font-family="-apple-system,Segoe UI,Roboto,sans-serif">${g.text}</text>`;
+  $('#guide').innerHTML=t;
+}
+function clearGuide(){$('#guide').innerHTML='';const o=$('#oval');o.classList.remove('ok','bad');}
 async function liveTick(){
   const key=STEPS[step].key;
-  if(!stream||busy||scans[key]||!$('#tab-scan')||$('#tab-scan').classList.contains('hidden')){scheduleLive();return;}
+  if(!stream||busy||scans[key]||$('#tab-scan').classList.contains('hidden')){scheduleLive();return;}
   const v=$('#video'); if(!v.videoWidth){scheduleLive();return;}
   try{
     const c=frame(480),r=await detect(c);
-    if(busy){scheduleLive();return;}
-    const lm=r.multiFaceLandmarks&&r.multiFaceLandmarks[0], el=$('#live');
-    if(!lm){el.textContent='No face detected.';live.ok=0;}
+    if(busy||scans[key]){scheduleLive();return;}
+    const lm=r.multiFaceLandmarks&&r.multiFaceLandmarks[0];
+    let g;
+    if(!lm){g={kind:'text',text:'No face found: look at the camera'};live.ok=0;}
     else{
       const m=Object.assign(metrics2D(lm,c.width,c.height),exp3D(lm,c.width,c.height));
-      const sum={};for(const k in m)sum[k]={v:m[k]};
-      const L=issues(sum,key).filter(t=>!/dark|bright|blurry|Light is uneven/.test(t));
-      if(L.length){el.textContent='Adjust: '+L[0];el.style.color='var(--mid)';live.ok=0;}
-      else{live.ok++;el.style.color='var(--good)';el.textContent='✓ Pose looks good'+($('#auto').checked?' (hold still…)':'');
-        if(live.ok>=3&&$('#auto').checked){live.ok=0;capture(false);return;}}
+      g=guidance(m,key);
+      if(g.ok){live.ok++;g.text=$('#auto').checked?'Perfect, hold still '+live.ok+'/3':'Perfect: tap Capture';}
+      else live.ok=0;
     }
+    drawGuide(g);
+    if(g.ok&&live.ok>=3&&$('#auto').checked){live.ok=0;drawGuide({ok:true,kind:'text',text:'Capturing…'});capture(false);return;}
   }catch(e){}
   scheduleLive();
 }
@@ -385,17 +471,24 @@ function renderSteps(){
   $('#stepHint').textContent=STEPS[step].hint;
 }
 function controls(){
-  const key=STEPS[step].key,have=!!scans[key],c=[];
-  if(!stream)c.push(`<button id="bCam">Start camera</button>`);
-  else c.push(`<button id="bNow" ${busy||have?'disabled':''}>Capture</button><button class="sec" id="bTimer" ${busy||have?'disabled':''}>5s timer</button>`);
-  c.push(`<button id="bPhone" ${busy||have?'disabled':''}>Take photo</button><button class="sec" id="bUp" ${busy||have?'disabled':''}>Upload photo</button>`);
-  if(have)c.push(`<button class="sec" id="bRetake">Retake</button>`);
-  if(have&&step<2)c.push(`<button class="sec" id="bNext">${step===0?'Add side view':'Next angle'}</button>`);
-  if(scans.front)c.push(`<button id="bGo" ${busy?'disabled':''}>Analyse (${Object.keys(scans).length} scan${Object.keys(scans).length>1?'s':''})</button>`);
+  const key=STEPS[step].key,have=!!scans[key],kept=have&&scans[key].kept,c=[];
+  if(have&&!kept){
+    c.push(`<button id="bKeep">Keep ✓</button><button class="sec" id="bRetake">Retake</button>`);
+  }else{
+    if(!have){
+      if(!stream)c.push(`<button id="bCam">Start camera</button>`);
+      else c.push(`<button id="bNow" ${busy?'disabled':''}>Capture now</button><button class="sec" id="bTimer" ${busy?'disabled':''}>5s timer</button>`);
+      c.push(`<button class="sec" id="bPhone" ${busy?'disabled':''}>Take photo</button><button class="sec" id="bUp" ${busy?'disabled':''}>Upload</button>`);
+    }else{
+      c.push(`<button class="sec" id="bRetake">Retake</button>`);
+      if(step<2)c.push(`<button class="sec" id="bNext">${step===0?'Add side view':'Next angle'}</button>`);
+    }
+    if(scans.front&&scans.front.kept)c.push(`<button id="bGo" ${busy?'disabled':''}>Analyse (${Object.values(scans).filter(x=>x.kept).length} scan${Object.values(scans).filter(x=>x.kept).length>1?'s':''})</button>`);
+  }
   $('#controls').innerHTML=c.join('');
   const on=(id,fn)=>{const e=$(id);if(e)e.onclick=fn;};
   on('#bCam',startCam);on('#bNow',()=>capture(false));on('#bTimer',()=>capture(true));on('#bUp',()=>$('#file').click());on('#bPhone',()=>$('#fileCam').click());
-  on('#bRetake',()=>{delete scans[key];showLive();});on('#bNext',()=>{step++;showLive();});on('#bGo',analyseNow);
+  on('#bRetake',()=>{delete scans[key];showLive();});on('#bKeep',()=>{scans[key].kept=true;showLive();});on('#bNext',()=>{step++;showLive();});on('#bGo',analyseNow);
 }
 function showLive(){
   $('#warn').textContent='';$('#err').textContent='';$('#qual').innerHTML='';
@@ -403,48 +496,123 @@ function showLive(){
   if(s){
     $('#shot').src=s.url;$('#shot').classList.remove('hidden');$('#video').classList.add('hidden');$('#placeholder').classList.add('hidden');$('#oval').classList.add('hidden');
     const L=issues(s.sum,key);
-    $('#qual').innerHTML=(L.length?L.map(t=>`<div class="q" style="color:var(--mid)">⚠ ${t}</div>`).join('')+'<div class="small">Retake for the cleanest numbers, or continue and read results with these caveats in mind.</div>':'<div class="q" style="color:var(--good)">✓ Capture quality looks fine.</div>')+
+    $('#qual').innerHTML=(L.length?L.map(t=>`<div class="q" style="color:var(--mid)">⚠ ${t}</div>`).join('')+'<div class="small">Tap Retake for the cleanest numbers, or Keep to continue with these caveats in mind.</div>':'<div class="q" style="color:var(--good)">✓ Capture quality looks fine.</div>')+
       `<div class="small">${s.samples.length} samples measured.</div>`;
-    $('#live').textContent='';
+    $('#live').textContent='';clearGuide();
   }else{
     $('#shot').classList.add('hidden');$('#oval').classList.remove('hidden');
     if(stream){$('#video').classList.remove('hidden');$('#placeholder').classList.add('hidden');}
     else{$('#video').classList.add('hidden');$('#placeholder').classList.remove('hidden');}
+    if(stream)scheduleLive();
   }
   renderSteps();controls();
 }
 
 /* ================= results ================= */
+const IPD_KEY='sculptlocal.ipd';
+const getIPD=()=>{const v=parseFloat(localStorage.getItem(IPD_KEY));return v>40&&v<90?v:null;};
+const mmPct=(sum,pct)=>{const i=getIPD();return i&&sum.hIpd?Math.abs(pct)/100*sum.hIpd.v*i:null;};
+const mmU=(sum,u)=>{const i=getIPD();return i&&Number.isFinite(u)?u*i:null;};
+const mmT=x=>x==null?'':` (about ${x.toFixed(1)} mm)`;
+const sdT=(o,dp)=>o&&o.sd!=null?` <span class="small">±${o.sd.toFixed(dp)}</span>`:'';
+
+const CANONS=[
+ {k:'cOrbital',name:'Orbital canon',rule:'The gap between the inner corners of your eyes equals the width of one eye',ideal:1,dp:2,
+  says:r=>r>1.1?'The gap between your eyes is wider than one eye-width, so your eyes read as wider-set.':r<0.9?'The gap between your eyes is narrower than one eye-width, so your eyes read as closer-set.':'The gap between your eyes is about one eye-width, matching the classical rule.',
+  extra:(sum)=>{const g=mmU(sum,sum.icdIpd&&sum.icdIpd.v),e=mmU(sum,sum.eflIpd&&sum.eflIpd.v);return g&&e?` Measured: eye gap ${g.toFixed(1)} mm, eye width ${e.toFixed(1)} mm.`:'';},
+  study:'Southern Chinese adults (n=103): met by 0%. Arabian Peninsula adults (n=168): the most common pattern was a gap wider than the eye (55.9% of men, 74.7% of women). Kenyans of Indian descent: met by about 20% of men and 21.6% of women, and most had eyes wider than the gap (67.3% of men, 68.9% of women). A Saudi sample averaged an eye gap of 32 ± 2.7 mm and an eye opening width of 30.1 ± 2.9 mm.'},
+ {k:'cOrbNasal',name:'Orbitonasal canon',rule:'The width of your nose (nostril wing to nostril wing) equals the gap between your eyes',ideal:1,dp:2,
+  says:r=>r>1.1?'Your eye gap is wider than your nose, so the nose is narrow relative to the space between the eyes.':r<0.9?'Your nose is wider than the gap between your eyes.':'Your nose width is about equal to the gap between your eyes, matching the classical rule.',
+  extra:(sum)=>{const n=mmU(sum,sum.nwIpd&&sum.nwIpd.v);return n?` Measured nose width: ${n.toFixed(1)} mm (Arabian Peninsula sample average 35.06 mm: men 37.14, women 33.21).`:'';},
+  study:'Southern Chinese adults: met by 19.4% overall (31.4% of men, 7.7% of women), the most-met canon in that study. Arabian Peninsula adults: nose wider than the eye gap in 92% of men and 56% of women. Kenyans of Indian descent: met by 14.5% of men and 18.9% of women. The Arabian sample averaged a nose width of 35.06 mm (men 37.14, women 33.21).'},
+ {k:'cNasoOral',name:'Naso-oral canon',rule:'Your mouth width is one and a half times your nose width',ideal:1.5,dp:2,
+  says:r=>r>1.65?'Your mouth is wider than 1.5 times your nose width.':r<1.35?'Your mouth is narrower than 1.5 times your nose width, which is the usual finding in the studies.':'Your mouth is close to 1.5 times your nose width, matching the classical rule.',
+  extra:(sum)=>{const mw=mmU(sum,sum.mwIpd&&sum.mwIpd.v);return mw?` Measured mouth width: ${mw.toFixed(1)} mm.`:'';},
+  study:'Southern Chinese adults: met by only 8.7%, and the mouth was narrower than 1.5 times the nose in 92.2% of men and 82.7% of women. Kenyans of Indian descent: met by 16.4% of men and 17.6% of women. Western Maharashtra: the canon was not valid, with the mouth narrower than 1.5 times the nose in 78.3% of men and 62.8% of women.'},
+ {k:'cNasoFacial',name:'Nasofacial canon',rule:'Your nose width equals one quarter of your face width (cheekbone to cheekbone)',ideal:0.25,dp:3,
+  says:r=>r>0.275?'Your nose takes up more than a quarter of your face width.':r<0.225?'Your nose takes up less than a quarter of your face width.':'Your nose is about a quarter of your face width, matching the classical rule.',
+  study:'This canon was tested in Greek young adults, where the neoclassical canons were not valid in the majority. I did not retrieve the exact percentage for this canon, so I am not quoting one.'},
+ {k:'cMidLower',name:'Vertical thirds (middle vs lower)',rule:'The middle third of the face (between the brows and the nose base) equals the lower third (nose base to chin)',ideal:1,dp:2,
+  says:r=>r>1.1?'Your middle third is longer than your lower third.':r<0.9?'Your lower third (nose base to chin) is longer than your middle third, which is the usual finding in the studies.':'Your middle and lower thirds are about equal, matching the classical rule.',
+  extra:()=>' The upper third is left out because the mesh has no hairline point.',
+  study:'Southern Chinese adults: the three-section canon was met by 0%. Arabian Peninsula adults: the thirds were not equal, and the lower third was larger than the middle third in 91.4% of men and 88% of women. Greek young adults: the canons were mostly not valid.'},
+ {k:'cLowerSplit',name:'Lower-face split (1 : 2)',rule:'The distance from the nose base to the mouth is half the distance from the mouth to the chin',ideal:0.5,dp:2,
+  says:r=>r>0.55?'Your upper-lip area is longer than the classical one-third of the lower face.':r<0.45?'Your upper-lip area is shorter than the classical one-third of the lower face.':'The split between upper lip and chin is close to the classical 1 : 2.',
+  study:'I did not retrieve published percentages for this canon, so I am not quoting any. Treat it as a descriptive marker.'}
+];
+
 const GROUPS=[
  {t:'Symmetry',items:[
-  {k:'asym',l:'Left-right offset',dp:2,u:'% of face height',w:'Average distance between mirrored landmark pairs, after levelling the face. Everyone is a little asymmetric. Pose, expression and hair move this number as much as bone does, so use it to compare yourself over time, not to judge.'}]},
+  {k:'asym',l:'Overall left-right offset',dp:2,u:'% of face height',w:'The average distance between mirrored landmark pairs after levelling the face.',
+   plain:(v,sum)=>`Mirrored points on your face are off by about ${v.toFixed(2)}% of your face height on average${mmT(mmPct(sum,v))}. ${v<1?'That is very small.':v<2?'That is a typical, small amount.':'That is on the larger side for one photo. A head turn, a smile or uneven light often cause this, so retake before reading much into it.'} (These bands are my own rough guide.)`,
+   typ:'Perfect symmetry does not exist. In 279 healthy young adults scanned in 3D, over half had overall surface asymmetry of 2–5 mm, and about 7–8% more than 5 mm (Raine Study). In another study of 48 adults with normal bites, left-right differences at individual landmarks ranged from 0.6 to 4.6 mm.'}]},
  {t:'Jaw and face shape',items:[
-  {k:'jawRatio',l:'Jaw width ÷ cheekbone width',dp:3,u:'',w:'Distance between the two lower-jaw mesh points over the widest cheek width. The jaw points are approximate, not clinician-marked.'},
-  {k:'chin2D',l:'Chin angle (front view)',dp:1,u:'°',w:'Angle at the chin between the two lower-jaw points. Smaller means a more V-shaped lower face in this photo.'},
-  {k:'faceWH',l:'Face width ÷ face height',dp:3,u:'',w:'Cheek width over forehead-top-to-chin height (mesh points, so not hairline to chin).'}]},
+  {k:'jawRatio',l:'Jaw width ÷ cheekbone width',dp:3,u:'',w:'The distance between the two lower-jaw mesh points over the widest cheek width. The jaw points are approximate, not clinician-marked.',
+   plain:v=>`Your lower-jaw width is ${(v*100).toFixed(0)}% of your cheekbone width. A higher number means a squarer jaw relative to your cheeks, and a lower number means a more tapered, oval or heart-shaped lower face.`},
+  {k:'chin2D',l:'Chin angle (front view)',dp:1,u:'°',w:'The angle at the chin between the two lower-jaw points.',
+   plain:v=>`The angle at your chin between the two jaw points is ${v.toFixed(0)}°. A smaller angle reads as a more pointed, V-shaped chin, and a larger angle reads as squarer.`},
+  {k:'faceWH',l:'Face width ÷ face height',dp:3,u:'',w:'Cheekbone width over forehead-top-to-chin height (mesh points, so not hairline to chin).',
+   plain:v=>`Your cheekbone width is ${(v*100).toFixed(0)}% of your forehead-to-chin height. A lower number means a longer, narrower face, and a higher number means a rounder, wider one.`}]},
  {t:'Eyes',items:[
-  {k:'eyeOpen',l:'Eye opening',dp:3,u:'',w:'Lid gap over eye width. Falls if you blink or squint, so it doubles as a quality check.'},
-  {k:'eyeMatch',l:'Left vs right eye width',dp:3,u:'',w:'1.000 means the two eye widths match.'},
-  {k:'canthal',l:'Inner-eye gap ÷ eye width',dp:3,u:'',w:'Descriptive only. The old "one eye apart" canon (1.0) rarely holds in real faces, so there is no grade.'}]},
- {t:'Proportions vs published averages',items:[
-  {k:'ipdW',l:'Pupil gap ÷ cheek width',dp:3,u:'',ref:'Reference: about 0.46 (Pallett 2010, average of young white female faces, measured against ear-to-ear width).',w:'Your pupil gap over cheekbone width. The paper used a different width landmark, so expect a systematic offset. Context, not a target.'},
-  {k:'eyeMouth',l:'Eyes-to-mouth ÷ face length',dp:3,u:'',ref:'Reference: about 0.36 (Pallett 2010, measured against hairline-to-chin length).',w:'Mid-pupil to inner lip, over forehead-top-to-chin. The mesh has no hairline, so this runs higher than the paper\'s. Context, not a target.'}]}
+  {k:'eyeOpen',l:'Eye opening',dp:3,u:'',w:'Lid gap over eye width at the moment of capture.',
+   plain:v=>`At the moment of capture your eyes were open to ${(v*100).toFixed(0)}% of their width. Low values mean a blink or a squint, which also lowers the accuracy of every eye measurement.`},
+  {k:'eyeMatch',l:'Left vs right eye width',dp:3,u:'',w:'The narrower eye width over the wider one. 1.000 means identical.',
+   plain:v=>`Your narrower eye is ${(v*100).toFixed(1)}% as wide as your wider eye. ${v>0.95?'They match closely.':v>0.9?'A small difference, which is common.':'A visible difference. Check it again with a straight-on photo.'} (My rough bands.)`,
+   typ:'No verified population average found. Small left-right differences in eye width are normal.'},
+  {k:'canthal',l:'Eye gap ÷ eye width',dp:3,u:'',w:'The distance between inner eye corners over the average eye width. This is the orbital canon ratio.',
+   plain:v=>`The gap between your eyes is ${v.toFixed(2)} times the width of one eye. About 1.0 means "one eye apart", higher means wider-set, and lower means closer-set.`,
+   typ:'A Saudi sample averaged an eye gap of 32 ± 2.7 mm and an eye opening width of 30.1 ± 2.9 mm, so a gap of about 1.06 times eye width (my division of those averages). The Arabian, Chinese and Indian-descent studies all found many people sit above or below 1.0.'}]},
+ {t:'Published averages (Pallett et al. 2010)',items:[
+  {k:'ipdW',l:'Pupil gap ÷ cheekbone width',dp:3,u:'',w:'Distance between pupils over cheekbone width.',
+   plain:v=>`Your pupil gap is ${(v*100).toFixed(0)}% of your cheekbone width. The published average-face value is 46%, but it was measured against ear-to-ear width, which is wider than cheekbone width, so your number reads higher by design. Higher still means more wide-set, and lower means closer-set.`,
+   typ:'About 0.46 in the average of young white female faces (Pallett 2010), where the most attractive version matched the average. It was measured against ear-to-ear width.'},
+  {k:'eyeMouth',l:'Eyes-to-mouth ÷ face length',dp:3,u:'',w:'The distance from the pupil line to the inner lip over forehead-top-to-chin length.',
+   plain:v=>`The distance from your eye line to your mouth is ${(v*100).toFixed(0)}% of your forehead-top-to-chin length. The published average-face value is 36% of hairline-to-chin length. Because the mesh length is shorter than hairline to chin, your number will usually read higher.`,
+   typ:'About 0.36 in the average of young white female faces (Pallett 2010), measured against hairline-to-chin length.'}]}
 ];
 const SKIN=[
- {k:'tex',l:'Fine texture index',dp:2,u:'',w:'Pixel-level roughness on forehead and cheeks. Depends on lighting, camera and focus.'},
- {k:'col',l:'Colour spread index',dp:2,u:'',w:'How much redness varies across the same patches.'}
+ {k:'tex',l:'Fine texture index',dp:2,u:'',w:'Pixel-level roughness on forehead and cheeks.',
+  plain:v=>`This is ${v.toFixed(1)} on an arbitrary scale. Higher means a rougher-looking surface in this photo (pores, texture, shine, noise). It only means something next to your own other scans in similar light.`,typ:'No normal range exists for this index.'},
+ {k:'col',l:'Colour spread index',dp:2,u:'',w:'How much redness varies across the same patches.',
+  plain:v=>`This is ${v.toFixed(1)} on an arbitrary scale. Higher means a more uneven or blotchy colour in this photo. Compare it only with your own scans in similar light.`,typ:'No normal range exists for this index.'}
 ];
-const fmtv=(o,dp,u)=>o?`${o.v.toFixed(dp)}${u&&u.length<3?u:''}${o.sd!=null?` <span class="small">±${o.sd.toFixed(dp)}</span>`:''}`:'—';
-function row(it,sum){
-  const o=sum[it.k];
-  return `<div class="m"><div class="top"><span>${it.l}</span><span class="v">${fmtv(o,it.dp,it.u)}</span></div>${it.u&&it.u.length>=3?`<div class="small">${it.u}</div>`:''}${it.ref?`<div class="ref">${it.ref}</div>`:''}<div class="small">${it.w}</div></div>`;
+function readRow(it,sum){
+  const o=sum[it.k]; if(!o) return '';
+  return `<div class="m"><div class="top"><span>${it.l}</span><span class="v">${o.v.toFixed(it.dp)}${it.u&&it.u.length<3?it.u:''}${sdT(o,it.dp)}</span></div>${it.u&&it.u.length>=3?`<div class="small">${it.u}</div>`:''}<div class="small">What it measures: ${it.w}</div><div class="small"><b>In plain words:</b> ${it.plain?it.plain(o.v,sum):''}</div><div class="small"><b>Typical / average:</b> ${it.typ||'No verified population average found for this mesh-based measure, so use it to track your own change over time.'}</div></div>`;
+}
+function canonRow(c,sum){
+  const o=sum[c.k]; if(!o) return '';
+  const r=o.v, dev=(r/c.ideal-1)*100, ok=Math.abs(dev)<=10, sc=clamp(100*(1-Math.abs(dev)/100/0.30),0,100);
+  return `<div class="m"><div class="top"><span>${c.name} <span class="tag ${ok?'hi':'mid'}">${ok?'within ±10%':(dev>0?'above':'below')+' the ideal'}</span></span><span class="v">${r.toFixed(c.dp)}${sdT(o,c.dp)}</span></div><div class="small">Rule: ${c.rule}. Ideal: ${c.ideal}. Your deviation: ${dev>=0?'+':''}${dev.toFixed(1)}%. Fit score: ${sc.toFixed(0)}/100.</div><div class="small"><b>In plain words:</b> ${c.says(r)}${c.extra?c.extra(sum):''}</div><div class="small"><b>What the studies found:</b> ${c.study}</div></div>`;
+}
+const SIDES=[
+ {l:'Eye width',R:'eyeW_R',L:'eyeW_L',w:'Horizontal opening of each eye, outer to inner corner.'},
+ {l:'Eye opening height',R:'eyeH_R',L:'eyeH_L',w:'Lid gap of each eye. Changes with blinking or squinting, so repeat if it looks off.'},
+ {l:'Brow-to-eyelid height',R:'brow_R',L:'brow_L',w:'Vertical distance from each brow to its upper lid. Differences often come from raising one brow.'},
+ {l:'Inner eye corner to midline',R:'eyeMid_R',L:'eyeMid_L',w:'How far each inner eye corner sits from the vertical midline through the middle of your pupils.'},
+ {l:'Cheekbone to midline',R:'zyMid_R',L:'zyMid_L',w:'Half-width of the face at the cheekbones on each side.'},
+ {l:'Nose wing to midline',R:'alMid_R',L:'alMid_L',w:'Distance of each nostril wing from the midline.'},
+ {l:'Mouth corner to midline',R:'mouthMid_R',L:'mouthMid_L',w:'Distance of each mouth corner from the midline. A smile on one side changes this.'},
+ {l:'Jaw point to midline',R:'jawMid_R',L:'jawMid_L',w:'Half-width of the lower jaw on each side (approximate mesh points).'}
+];
+function sideRow(it,sum){
+  const r=sum[it.R],l=sum[it.L]; if(!r||!l) return '';
+  const diff=(l.v-r.v)/((l.v+r.v)/2)*100, ad=Math.abs(diff), mm=mmPct(sum,l.v-r.v);
+  const bigger=diff>0?'left':'right';
+  const msg=ad<3?'The two sides are practically equal.':ad<8?`A small difference, with your ${bigger} side larger. That is common.`:`A clear difference, with your ${bigger} side larger. Head turn, expression or lighting can cause this, so retake and see if it repeats before treating it as real.`;
+  return `<div class="m"><div class="top"><span>${it.l}</span><span class="v">R ${r.v.toFixed(2)} · L ${l.v.toFixed(2)}</span></div><div class="small">Values are % of face height. Difference: ${diff>=0?'+':''}${diff.toFixed(1)}% (left minus right)${mmT(mm)}. ${it.w}</div><div class="small"><b>In plain words:</b> ${msg} (My rough bands: under 3% equal, 3–8% small, over 8% clear.)</div></div>`;
+}
+function midRow(l,k,sum,plainL,plainR){
+  const o=sum[k]; if(!o) return '';
+  const v=o.v, ad=Math.abs(v), side=v>0?'left':'right';
+  return `<div class="m"><div class="top"><span>${l}</span><span class="v">${ad.toFixed(2)}% to your ${side}${sdT(o,2)}</span></div><div class="small">${mmT(mmPct(sum,v)).trim()} Measured from the vertical line through the middle of your pupils.</div><div class="small"><b>In plain words:</b> ${ad<1?'Basically centred.':ad<2.5?`Slightly off-centre toward your ${side}, which is common.`:`Visibly off-centre toward your ${side}. A turned head or a tilted chin can cause this, so retake before concluding.`} (My rough bands.)</div></div>`;
 }
 function analyseNow(){
   const f=scans.front,sum=f.sum;
   const n=f.samples.length;
-  // store history (numbers only)
+  for(const k of Object.keys(scans)) if(!scans[k].kept) delete scans[k];
   const rec={t:Date.now(),n,m:{}};
-  for(const k of ['asym','jawRatio','chin2D','faceWH','eyeOpen','eyeMatch','canthal','ipdW','eyeMouth','tex','col','luma','lr'])if(sum[k])rec.m[k]={v:sum[k].v,sd:sum[k].sd};
+  for(const k of ['asym','jawRatio','chin2D','faceWH','eyeOpen','eyeMatch','canthal','ipdW','eyeMouth','tex','col','luma','lr','harmony','canonsMet','cOrbital','cOrbNasal','cNasoOral','cNasoFacial','cMidLower','cLowerSplit'])if(sum[k])rec.m[k]={v:sum[k].v,sd:sum[k].sd};
   const hist=JSON.parse(localStorage.getItem('sculptlocal.v2')||'[]');hist.push(rec);
   localStorage.setItem('sculptlocal.v2',JSON.stringify(hist.slice(-120)));
   lastRun=rec;
@@ -453,27 +621,40 @@ function analyseNow(){
 function renderResults(){
   const f=scans.front; if(!f){return;}
   const sum=f.sum,hist=JSON.parse(localStorage.getItem('sculptlocal.v2')||'[]');
-  const L=issues(sum,'front');
-  let h=`<div class="card"><h3>Capture quality</h3>${L.length?L.map(t=>`<div class="q" style="color:var(--mid)">⚠ ${t}</div>`).join('')+'<div class="small">Numbers from this scan carry extra error. Retake if you want to compare it with others.</div>':'<div class="q" style="color:var(--good)">✓ No pose, light or focus problems detected.</div>'}<div class="small">Each number below is the median of ${f.samples.length} samples. ± is the sample spread (SD). A wide ± means the measurement is unstable, so do not read much into it.</div></div>`;
-  for(const g of GROUPS) h+=`<div class="card"><h3>${g.t}</h3>${g.items.map(it=>row(it,sum)).join('')}</div>`;
-  h+=`<div class="card"><h3>Front scan with landmarks</h3><div class="small" style="margin-bottom:8px">Mesh, forehead-chin axis (dashed) and the paired points used for the symmetry check (green).</div><canvas id="overlay"></canvas></div>`;
-  // skin tracker comparability
+  const L=issues(sum,'front'), ipd=getIPD();
+  let h=`<div class="card"><h3>Calibration (optional)</h3><div class="small">Enter your pupil distance in mm (from a glasses prescription, usually 55–70) and every distance below also appears in millimetres. Without it, results are shown as ratios and percentages only. Accuracy in mm is limited by camera distance and lens, roughly a few millimetres.</div><div class="row"><input id="ipdIn" type="number" step="0.5" min="40" max="90" placeholder="e.g. 63" value="${ipd||''}" style="background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px;width:110px"><button class="sec" id="ipdSave">Save</button></div></div>`;
+  const hm=sum.harmony, met=sum.canonsMet;
+  if(hm&&met){
+    h+=`<div class="card"><h3>Harmony index <span class="tag mid">personal study index</span></h3><div style="font-size:40px;font-weight:700">${hm.v.toFixed(0)}<span class="small"> / 100</span>${sdT(hm,0)}</div><div class="small">Canons within ±10% of the classical ideal: <b>${Math.round(met.v)} of 6</b>.</div>
+    <div class="small"><b>In plain words:</b> ${hm.v>=80?'Your proportions sit close to the classical rules overall.':hm.v>=60?'Several of your proportions are close to the classical rules and others differ. That is very common.':'Your proportions differ from the classical rules in several places. That is the normal case: in the studies, individual canons were met by only about 0–51% of healthy people.'}</div>
+    <div class="small"><b>How it is built:</b> each of the six canons below scores 100 when your ratio equals the ideal and falls in a straight line to 0 when you are 30% away. The index is the average of the six. The 30% and ±10% cut-offs are my own choices.</div>
+    <div class="small"><b>Typical / average:</b> No published distribution exists for this exact index, so there is no verified average. What is published is that individual canons were met by 0–51.5% of the healthy adults tested (Greek review), and the Southern Chinese authors concluded the canons should not be used as aesthetic goals. A mid or low index is therefore normal and says nothing about attractiveness or health.</div></div>`;
+  }
+  h+=`<div class="card"><h3>Capture quality</h3>${L.length?L.map(t=>`<div class="q" style="color:var(--mid)">⚠ ${t}</div>`).join('')+'<div class="small">Numbers from this scan carry extra error. Retake if you want to compare it with others.</div>':'<div class="q" style="color:var(--good)">✓ No pose, light or focus problems detected.</div>'}<div class="small">Each number below is the median of ${f.samples.length} samples. ± is the sample spread (SD). A wide ± means the measurement is unstable.</div></div>`;
+  h+=`<div class="card"><h3>Classical proportion canons</h3><div class="small">The six rules used in the Southern Chinese, Greek and Arabian Peninsula studies. Markers: tr* = top of forehead (a proxy, the mesh has no hairline), n = nasion, sn = subnasale, gn = chin.</div>${CANONS.map(c=>canonRow(c,sum)).join('')}
+   <div class="m"><div class="top"><span>Rule of fifths (extra marker)</span><span class="v">${sum.fifths?sum.fifths.v.toFixed(2)+sdT(sum.fifths,2):'—'}</span></div><div class="small"><b>In plain words:</b> Your face (cheekbone to cheekbone) is ${sum.fifths?sum.fifths.v.toFixed(1):'—'} eye-widths wide. The classical rule says 5. This marker is not counted in the index. I did not retrieve published percentages for it.</div></div></div>`;
+  h+=`<div class="card"><h3>Left side vs right side</h3><div class="small">"Right" and "left" mean YOUR right and left. A face is judged against a vertical midline through the middle of your pupils. In healthy young adults, left-right landmark differences of roughly 0.6–4.6 mm were measured (48 adults, 3D scans), and over half had overall surface asymmetry of 2–5 mm (Raine Study, n=279). So some difference is normal.</div>${SIDES.map(it=>sideRow(it,sum)).join('')}
+   ${midRow('Nose tip off the midline','noseDev',sum)}${midRow('Mouth centre off the midline','mouthDev',sum)}${midRow('Chin off the midline','chinDev',sum)}
+   ${sum.mouthTilt?`<div class="m"><div class="top"><span>Mouth-line tilt</span><span class="v">${Math.abs(sum.mouthTilt.v).toFixed(2)}% ${sum.mouthTilt.v>0?'right corner lower':'left corner lower'}${sdT(sum.mouthTilt,2)}</span></div><div class="small"><b>In plain words:</b> ${Math.abs(sum.mouthTilt.v)<1?'Your mouth corners are level.':'One corner sits lower than the other. A half-smile or lip habit commonly causes this.'} (My rough band: under 1% level.)</div></div>`:''}</div>`;
+  for(const g of GROUPS) h+=`<div class="card"><h3>${g.t}</h3>${g.items.map(it=>readRow(it,sum)).join('')}</div>`;
+  h+=`<div class="card"><h3>Front scan with markers</h3><label class="chk"><input type="checkbox" id="showMarkers" checked> Show canon markers (eye gap, nose width, mouth width, cheek width, thirds levels)</label><div class="small" style="margin:6px 0">Mesh, forehead-chin axis (dashed yellow) and the mirrored pairs used for symmetry (green).</div><canvas id="overlay"></canvas></div>`;
   let skinNote='';
   const prev=hist.length>1?hist[hist.length-2]:null,cur=hist[hist.length-1];
   if(prev&&prev.m.luma&&cur.m.luma){
     const rel=Math.abs(prev.m.luma.v-cur.m.luma.v)/prev.m.luma.v, ok=rel<0.12&&(cur.m.lr?cur.m.lr.v<0.12:true)&&(prev.m.lr?prev.m.lr.v<0.12:true);
     skinNote=ok?'Lighting is similar to your previous scan, so these two are roughly comparable.':'Lighting differs from your previous scan, so skin numbers are not comparable between the two.';
   }
-  h+=`<div class="card"><h3>Skin tracker <span class="tag lo">self-comparison only</span></h3><div class="small">These are not a skin-health score and there is no "good" value. They only show whether your own skin looks smoother or more even <i>under the same lighting and camera</i>. Do not use them to judge a mole, rash or acne. See a doctor for those.${skinNote?'<br><b>'+skinNote+'</b>':''}</div>${SKIN.map(it=>row(it,sum)).join('')}<div class="small">Light level: ${sum.luma?sum.luma.v.toFixed(0):'—'} / 255. Left-right light imbalance: ${sum.lr?(sum.lr.v*100).toFixed(0)+'%':'—'}.</div></div>`;
-  // experimental 3D
+  h+=`<div class="card"><h3>Skin tracker <span class="tag lo">self-comparison only</span></h3><div class="small">Not a skin-health score. See a doctor for any mole, rash or acne concern.${skinNote?'<br><b>'+skinNote+'</b>':''}</div>${SKIN.map(it=>readRow(it,sum)).join('')}<div class="small">Light level: ${sum.luma?sum.luma.v.toFixed(0):'—'} / 255. Left-right light imbalance: ${sum.lr?(sum.lr.v*100).toFixed(0)+'%':'—'}.</div></div>`;
   const ks=Object.keys(scans), chin=ks.map(k=>scans[k].sum.chin3D&&scans[k].sum.chin3D.v).filter(Number.isFinite),jaw=ks.map(k=>scans[k].sum.jaw3D&&scans[k].sum.jaw3D.v).filter(Number.isFinite);
   h+=`<div class="card"><h3>Experimental 3D <span class="tag lo">low confidence</span></h3><div class="small">Google's depth values come from synthetic training data, so treat these as rough. ${ks.length} scan(s).</div>
-   <div class="m"><div class="top"><span>Chin angle (3D)</span><span class="v">${chin.length?median(chin).toFixed(1)+'°':'—'}</span></div><div class="small">Same idea as the 2D chin angle but turn-independent in principle. Compare with the 2D value; if they disagree a lot, depth is unreliable.</div></div>
-   <div class="m"><div class="top"><span>Jaw ÷ cheek width (3D)</span><span class="v">${jaw.length?median(jaw).toFixed(3):'—'}</span></div></div></div>`;
+   <div class="m"><div class="top"><span>Chin angle (3D)</span><span class="v">${chin.length?median(chin).toFixed(1)+'°':'—'}</span></div><div class="small"><b>In plain words:</b> The same idea as the 2D chin angle but meant to ignore head turn. If it disagrees a lot with the 2D value, depth is unreliable.</div></div>
+   <div class="m"><div class="top"><span>Jaw ÷ cheek width (3D)</span><span class="v">${jaw.length?median(jaw).toFixed(3):'—'}</span></div><div class="small"><b>In plain words:</b> Same as the 2D jaw ratio, measured in 3D.</div></div></div>`;
   h+=`<div class="row"><button id="again">New session</button><button class="sec" id="dl">Download this result (JSON)</button></div>`;
   $('#resultsBody').innerHTML=h;
   $('#again').onclick=()=>{scans={};step=0;showLive();switchTab('scan');};
   $('#dl').onclick=()=>{const blob=new Blob([JSON.stringify({date:new Date().toISOString(),summary:sum},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='sculptlocal-result.json';a.click();};
+  $('#ipdSave').onclick=()=>{const v=parseFloat($('#ipdIn').value);if(v>40&&v<90)localStorage.setItem(IPD_KEY,String(v));else localStorage.removeItem(IPD_KEY);renderResults();};
+  $('#showMarkers').onchange=drawOverlay;
   drawOverlay();
 }
 function drawOverlay(){
@@ -481,13 +662,19 @@ function drawOverlay(){
   c.width=Math.round(src.width*k);c.height=Math.round(src.height*k);
   const x=c.getContext('2d');x.drawImage(src,0,0,c.width,c.height);
   const pt=i=>[s.lm[i].x*c.width,s.lm[i].y*c.height];
-  if(typeof FACEMESH_TESSELATION!=='undefined'){x.strokeStyle='rgba(124,196,255,.28)';x.lineWidth=1;x.beginPath();for(const [a,b] of FACEMESH_TESSELATION){const p=pt(a),q=pt(b);x.moveTo(p[0],p[1]);x.lineTo(q[0],q[1]);}x.stroke();}
+  if(typeof FACEMESH_TESSELATION!=='undefined'){x.strokeStyle='rgba(124,196,255,.22)';x.lineWidth=1;x.beginPath();for(const [a,b] of FACEMESH_TESSELATION){const p=pt(a),q=pt(b);x.moveTo(p[0],p[1]);x.lineTo(q[0],q[1]);}x.stroke();}
   x.strokeStyle='rgba(255,207,107,.9)';x.setLineDash([6,5]);x.lineWidth=2;x.beginPath();const a=pt(10),b=pt(152);x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.stroke();x.setLineDash([]);
   x.fillStyle='rgba(111,220,154,.95)';for(const [l,r] of PAIRS)for(const i of [l,r]){const p=pt(i);x.beginPath();x.arc(p[0],p[1],3,0,7);x.fill();}
+  const sm=$('#showMarkers');
+  if(!sm||sm.checked){
+    const Ln=(i,j,col,lab)=>{const p=pt(i),q=pt(j);x.strokeStyle=col;x.lineWidth=2.5;x.beginPath();x.moveTo(p[0],p[1]);x.lineTo(q[0],q[1]);x.stroke();if(lab){x.fillStyle=col;x.font='bold 12px sans-serif';x.fillText(lab,(p[0]+q[0])/2-10,(p[1]+q[1])/2-6);}};
+    Ln(133,362,'#ff6b6b','eye gap');Ln(129,358,'#ffd166','nose');Ln(61,291,'#06d6a0','mouth');Ln(234,454,'#c77dff','cheeks');Ln(33,133,'#4cc9f0','');Ln(263,362,'#4cc9f0','');
+    for(const [i,lab] of [[10,'tr*'],[168,'n'],[2,'sn'],[152,'gn']]){const p=pt(i);x.strokeStyle='rgba(255,255,255,.55)';x.lineWidth=1.5;x.setLineDash([4,4]);x.beginPath();x.moveTo(p[0]-70,p[1]);x.lineTo(p[0]+70,p[1]);x.stroke();x.setLineDash([]);x.fillStyle='#fff';x.font='11px sans-serif';x.fillText(lab,p[0]+74,p[1]+4);}
+  }
 }
 
 /* ================= trends ================= */
-const TREND_KEYS=[['asym','Left-right offset (% face height)',2],['jawRatio','Jaw ÷ cheek width',3],['chin2D','Chin angle (°)',1],['faceWH','Face width ÷ height',3],['canthal','Inner-eye gap ÷ eye width',3],['ipdW','Pupil gap ÷ cheek width',3],['eyeMouth','Eyes-to-mouth ÷ face length',3],['tex','Skin texture index (same light only)',2],['col','Skin colour spread (same light only)',2]];
+const TREND_KEYS=[['harmony','Harmony index (0–100)',1],['canonsMet','Canons within ±10% (of 6)',0],['cOrbital','Orbital canon ratio',2],['cOrbNasal','Orbitonasal canon ratio',2],['cNasoOral','Naso-oral canon ratio',2],['cNasoFacial','Nasofacial canon ratio',3],['cMidLower','Middle ÷ lower third',2],['cLowerSplit','Lower-face split',2],['asym','Left-right offset (% face height)',2],['jawRatio','Jaw ÷ cheek width',3],['chin2D','Chin angle (°)',1],['faceWH','Face width ÷ height',3],['canthal','Inner-eye gap ÷ eye width',3],['ipdW','Pupil gap ÷ cheek width',3],['eyeMouth','Eyes-to-mouth ÷ face length',3],['tex','Skin texture index (same light only)',2],['col','Skin colour spread (same light only)',2]];
 const getHist=()=>JSON.parse(localStorage.getItem('sculptlocal.v2')||'[]');
 function renderTrendSel(){
   const s=$('#trendSel'),cur=s.value;

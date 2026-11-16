@@ -4,10 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0f1115">
-<title>SculptLocal v2 — private face measurement</title>
+<meta name="theme-color" content="#f3f6f8">
+<title>SculptLocal — private face measurement</title>
 <style>
-:root{--bg:#0f1115;--card:#171a21;--line:#262b36;--tx:#e8eaf0;--mut:#8b93a7;--acc:#7cc4ff;--good:#6fdc9a;--mid:#ffcf6b;--bad:#ff7b7b}
+:root{--bg:#f3f6f8;--card:#ffffff;--line:#d3dce3;--tx:#14202b;--mut:#4f5d6b;--acc:#0b6e8a;--btx:#ffffff;--good:#1b7f4b;--mid:#9a5b00;--bad:#b3261e;--plot:#ffffff;--dot:#14202b;--sd:#c77700}
+:root[data-theme=dark]{--bg:#0f1115;--card:#171a21;--line:#262b36;--tx:#e8eaf0;--mut:#8b93a7;--acc:#7cc4ff;--btx:#04121d;--good:#6fdc9a;--mid:#ffcf6b;--bad:#ff7b7b;--plot:#000000;--dot:#e8eaf0;--sd:#ffcf6b}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
 header{padding:16px 16px 4px;max-width:780px;margin:0 auto}
@@ -27,9 +28,11 @@ main{max-width:780px;margin:0 auto;padding:6px 16px 60px}
 .oval{position:absolute;left:50%;top:50%;width:62%;height:74%;transform:translate(-50%,-50%);border:2px dashed rgba(124,196,255,.7);border-radius:50%;pointer-events:none}
 .oval.ok{border:3px solid #6fdc9a}.oval.bad{border:3px solid #ffb020}
 #guide{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;filter:drop-shadow(0 1px 3px #000)}
+.banner{position:absolute;left:8%;right:8%;top:42%;padding:14px 10px;border-radius:14px;text-align:center;font-size:22px;font-weight:800;color:#fff;z-index:5;box-shadow:0 4px 20px #000a}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .15s;z-index:6}#flash.on{opacity:.85}
 .count{position:absolute;font-size:72px;font-weight:700;color:#fff;text-shadow:0 2px 12px #000}
 .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
-button{background:var(--acc);color:#04121d;border:0;border-radius:10px;padding:10px 14px;font-weight:600;font-size:14px;cursor:pointer}
+button{background:var(--acc);color:var(--btx);border:0;border-radius:10px;padding:10px 14px;font-weight:600;font-size:14px;cursor:pointer}
 button.sec{background:transparent;color:var(--tx);border:1px solid var(--line)}
 button:disabled{opacity:.4;cursor:default}
 select{background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px}
@@ -46,16 +49,47 @@ h3{margin:0 0 4px;font-size:16px}
 .tag.hi{color:var(--good);border-color:var(--good)}.tag.mid{color:var(--mid);border-color:var(--mid)}.tag.lo{color:var(--bad);border-color:var(--bad)}
 ul{padding-left:18px;margin:6px 0}li{margin:4px 0}
 canvas{width:100%;border-radius:12px;background:#000}
+#trend{background:var(--plot);border:1px solid var(--line)}
+#themeBtn{float:right;padding:6px 10px;font-size:13px}
 a{color:var(--acc)}
 .hidden{display:none}
 .q{font-size:13px;margin:3px 0}
 footer{color:var(--mut);font-size:12px;max-width:780px;margin:0 auto;padding:0 16px 40px}
 label.chk{font-size:13px;color:var(--mut);display:flex;gap:6px;align-items:center}
+
+/* ---------- interaction + motion ---------- */
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{transform:scale(.85);opacity:0}60%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(11,110,138,.0)}50%{box-shadow:0 0 0 6px rgba(11,110,138,.18)}}
+.card{animation:rise .45s ease both}
+section:not(.hidden){animation:rise .35s ease both}
+.chip{transition:transform .2s,border-color .2s,color .2s}.chip.done{animation:pop .4s ease}
+button{transition:transform .12s ease,filter .15s,opacity .2s}button:active:not(:disabled){transform:scale(.94);filter:brightness(1.1)}
+nav button{transition:all .2s}
+.tag{animation:pop .4s ease both}
+.m.tap{cursor:pointer;position:relative;padding:10px 8px;margin:2px -8px;border-radius:10px;transition:background .2s,transform .15s}
+.m.tap:active{transform:scale(.985)}
+.card.m.tap{margin:12px 0;padding:14px}
+.m.tap:hover{background:color-mix(in srgb,var(--acc) 7%,transparent)}
+.m.tap.active{background:color-mix(in srgb,var(--acc) 12%,transparent);animation:glow 1.6s ease-in-out infinite}
+.m.tap .top .chev{display:inline-block;margin-left:8px;color:var(--acc);transition:transform .3s;font-weight:800}
+.m.tap.active .chev{transform:rotate(90deg)}
+.m .more{display:grid;grid-template-rows:0fr;transition:grid-template-rows .35s ease}
+.m .more>.in{overflow:hidden;min-height:0}
+.m.active .more{grid-template-rows:1fr}
+.m .tip{font-size:12px;color:var(--acc);margin-top:4px;font-weight:600;transition:opacity .2s}
+.m.active .tip{opacity:0;height:0;margin:0;overflow:hidden}
+.sticky{position:sticky;top:6px;z-index:20;margin-top:6px;box-shadow:0 6px 22px rgba(0,0,0,.18)}
+#overlay{width:auto;max-width:100%;max-height:28vh;display:block;margin:0 auto}
+#hlCap{margin-top:6px;min-height:34px;font-weight:600;color:var(--tx);font-size:13px;transition:opacity .2s}
+.chk input{accent-color:var(--acc)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <header>
-  <h1>Sculpt<span>Local</span> <span style="font-size:12px;color:var(--mut)">v2</span></h1>
+  <button class="sec" id="themeBtn" aria-label="Switch light or dark theme">Dark mode</button>
+  <h1>Sculpt<span>Local</span> <span style="font-size:12px;color:var(--mut)">v5</span></h1>
   <div class="sub">Personal-study face measurement, on this device only. Every reading comes with its uncertainty, a plain-language meaning, and published reference values where they exist.</div>
 </header>
 <nav>
@@ -75,6 +109,7 @@ label.chk{font-size:13px;color:var(--mut);display:flex;gap:6px;align-items:cente
       <div class="oval" id="oval"></div>
       <svg id="guide" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid meet"></svg>
       <div class="count hidden" id="count"></div>
+      <div class="banner hidden" id="banner"></div><div id="flash"></div>
       <div class="hint" id="placeholder" style="padding:20px;text-align:center">Start the camera, or upload a photo.</div>
     </div>
     <div class="live" id="live"></div>
@@ -83,7 +118,7 @@ label.chk{font-size:13px;color:var(--mut);display:flex;gap:6px;align-items:cente
     <div class="warn" id="warn"></div>
     <div class="err" id="err"></div>
     <div class="row" id="controls"></div>
-    <div class="row"><label class="chk"><input type="checkbox" id="auto" checked> Auto-capture when pose is good</label></div>
+    <div class="row" style="flex-direction:column;align-items:flex-start;gap:6px"><label class="chk"><input type="checkbox" id="auto" checked> Auto-capture when pose is good</label><label class="chk"><input type="checkbox" id="autoKeep" checked> Auto-keep and move to the next angle (retakes by itself if the pose was off)</label><label class="chk"><input type="checkbox" id="cues" checked> Voice and sound cues (so you can look sideways)</label></div>
     <input type="file" id="file" accept="image/*" class="hidden">
     <input type="file" id="fileCam" accept="image/*" capture="user" class="hidden">
   </div>
@@ -168,8 +203,8 @@ const lerp=(a,b,t)=>a+(b-a)*t;
 
 const STEPS=[
  {key:'front',label:'Front',hint:'Required. Look straight into the lens, head level, neutral relaxed face, mouth closed, eyes open, hair off your forehead and ears if you can, even light on both sides. Camera at eye level, an arm and a half away or further.'},
- {key:'left',label:'Left 45° (optional)',hint:'Optional, experimental. Turn about 45° and keep your chin level. Only feeds the low-confidence 3D numbers.'},
- {key:'right',label:'Right 45° (optional)',hint:'Optional, experimental. Turn about 45° the other way.'}
+ {key:'left',label:'Left 45°',hint:'Optional. Turn your head about 45° to YOUR left and keep your chin level. Voice and sound will guide you, so you do not need to look at the screen.'},
+ {key:'right',label:'Right 45°',hint:'Optional. Turn your head about 45° to YOUR right and keep your chin level.'}
 ];
 
 /* ================= Face Mesh (serialised) ================= */
@@ -226,6 +261,7 @@ function metrics2D(lm,w,h){
     mouthOpen:d(p(13),p(14))/d(p(61),p(291)),
     roll:Math.atan2(p(263)[1]-p(33)[1],p(263)[0]-p(33)[0])*180/Math.PI,
     noseR:(p(1)[0]-p(234)[0])/(p(454)[0]-p(234)[0]),
+    yaw2:(()=>{const n=2*((p(1)[0]-p(234)[0])/(p(454)[0]-p(234)[0])-0.5);return Math.sign(n)*Math.atan(Math.abs(n)/0.9)*180/Math.PI;})(),
     faceFrac:H/h
   };
 }
@@ -331,7 +367,7 @@ function issues(sum,key){
     if(g('mouthOpen')>0.06) L.push(['Mouth is open. Relax it closed.']);
     if(g('eyeOpen')<0.18) L.push(['Eyes look partly closed (blink?).']);
   }else{
-    const y=Math.abs(g('yaw3')); if(y<25||y>65) L.push(['Turn measures about '+y.toFixed(0)+'° (target roughly 45°).']);
+    const yy=g('yaw2'),y=Math.abs(yy),want=key==='left'?1:-1; if(!(y>=30&&y<=60&&Math.sign(yy)===want)) L.push(['Turn measures about '+(Math.sign(yy)===want?'':'-')+y.toFixed(0)+'° (target roughly 45° to your '+key+', estimated from the 2D face).']);
   }
   if(g('faceFrac')<0.35) L.push(['Face is small in the frame. Move closer or crop.']);
   if(g('faceFrac')>0.9) L.push(['Face fills the whole frame. Move back.']);
@@ -368,7 +404,7 @@ async function frameFromFile(f){
   c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);return c;
 }
 async function startCam(){
-  $('#err').textContent='';
+  $('#err').textContent='';ac();
   try{
     stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:960}},audio:false});
     const v=$('#video');v.srcObject=stream;await v.play();showLive();scheduleLive();
@@ -378,7 +414,7 @@ async function capture(timer){
   if(busy||!stream) return;
   if(timer){
     busy=true;controls();const el=$('#count');el.classList.remove('hidden');
-    for(let i=5;i>0;i--){el.textContent=i;await new Promise(r=>setTimeout(r,1000));}
+    for(let i=5;i>0;i--){el.textContent=i;beep(660,0.1,0);await new Promise(r=>setTimeout(r,1000));}
     el.classList.add('hidden');busy=false;
   }
   busy=true;controls();$('#warn').textContent='Capturing 8 frames, hold still…';
@@ -404,29 +440,69 @@ async function runScan(canvases){
     const mid=samples[Math.floor(samples.length/2)];
     scans[key]={samples,sum:summarise(samples),url:mid.canvas.toDataURL('image/jpeg',.85),canvas:mid.canvas,lm:mid.lm,kept:false};
     busy=false;showLive();
+    const wasAuto=live.auto;live.auto=false;
+    if(wasAuto)afterAutoShot(key);
   }catch(e){busy=false;$('#warn').textContent='';$('#err').textContent='Landmark model failed: '+(e.message||e)+'. Keep the mp/ folder next to index.html and open the page via http://localhost.';controls();}
+}
+function afterAutoShot(key){
+  shutter();
+  const L=issues(scans[key].sum,key),myStep=step,auto=$('#autoKeep').checked;
+  if(!auto){banner('✓ Photo taken','#1f9d55');say('Photo taken. You can look back now.',true);setTimeout(hideBanner,3000);return;}
+  if(L.length&&(live.retries||0)<2){
+    live.retries=(live.retries||0)+1;banner('Not quite right, retaking','#c77700');say('Not quite right. Let us try again.',true);
+    setTimeout(()=>{hideBanner();if(step===myStep&&scans[key]&&!scans[key].kept){delete scans[key];showLive();}},2200);return;
+  }
+  live.retries=0;
+  const last=myStep>=STEPS.length-1;
+  banner(last?'✓ Photo taken. All angles done':'✓ Photo taken. You can look back now','#1f9d55');
+  say(last?'Photo taken. All done. Tap Analyse.':'Photo taken. You can look back now.',true);
+  setTimeout(()=>{
+    hideBanner();
+    if(step!==myStep||!scans[key]||scans[key].kept)return;
+    scans[key].kept=true;
+    if(myStep<STEPS.length-1){step=myStep+1;showLive();say(STEPS[step].key==='left'?'Now turn your head to your left':'Now turn your head to your right',true);}
+    else showLive();
+  },3200);
 }
 $('#fileCam').onchange=$('#file').onchange=async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
   try{runScan(varyCanvases(await frameFromFile(f)));}catch(err){$('#err').textContent='Could not read that image.';}
 };
 
+
+/* ================= sound, voice, banner ================= */
+let AC=null,lastSay={t:'',at:0};
+function ac(){try{if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();}catch(e){}return AC;}
+function beep(f,d,delay){const a=ac();if(!a||!$('#cues').checked)return;const t=a.currentTime+(delay||0),o=a.createOscillator(),g=a.createGain();o.frequency.value=f;o.type='sine';g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.4,t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+d);o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+d+0.02);}
+function say(text,force){
+  if(!$('#cues').checked||!window.speechSynthesis||!text)return;
+  const n=Date.now();if(!force&&text===lastSay.t&&n-lastSay.at<4000)return;
+  if(!force&&n-lastSay.at<1500)return;
+  lastSay={t:text,at:n};
+  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.rate=1.05;speechSynthesis.speak(u);}catch(e){}
+}
+function buzz(p){try{if(navigator.vibrate)navigator.vibrate(p);}catch(e){}}
+function banner(txt,col){const b=$('#banner');b.textContent=txt;b.style.background=col||'#1f9d55';b.classList.remove('hidden');}
+function hideBanner(){$('#banner').classList.add('hidden');}
+function shutter(){beep(880,0.12,0);beep(1320,0.18,0.14);buzz([60,40,60]);const f=$('#flash');f.classList.add('on');setTimeout(()=>f.classList.remove('on'),180);}
+
 /* ================= live guidance ================= */
 function scheduleLive(){clearTimeout(live.timer);live.timer=setTimeout(liveTick,350);}
 function guidance(m,key){
-  if(m.faceFrac<0.45) return {kind:'closer',text:'Move closer'};
-  if(m.faceFrac>0.68) return {kind:'farther',text:'Move back a little'};
+  if(m.faceFrac<0.45) return {kind:'closer',text:'Move closer',say:'Move closer'};
+  if(m.faceFrac>0.68) return {kind:'farther',text:'Move back a little',say:'Move back'};
   if(key==='front'){
-    if(Math.abs(m.roll)>3) return {kind:'roll',dir:m.roll>0?'cw':'ccw',text:'Tilt your head this way'};
+    if(Math.abs(m.roll)>3) return {kind:'roll',dir:m.roll>0?'cw':'ccw',text:'Tilt your head this way',say:m.roll>0?'Tilt your head to the right':'Tilt your head to the left'};
     const dn=m.noseR-0.5;
-    if(Math.abs(dn)>0.04) return {kind:'turn',dir:dn>0?'right':'left',text:'Turn your face this way'};
-    if(m.mouthOpen>0.06) return {kind:'text',text:'Close your mouth'};
-    if(m.eyeOpen<0.18) return {kind:'text',text:'Open your eyes wide'};
+    if(Math.abs(dn)>0.04) return {kind:'turn',dir:dn>0?'right':'left',text:'Turn your face this way',say:dn>0?'Turn your face to the right':'Turn your face to the left'};
+    if(m.mouthOpen>0.06) return {kind:'text',text:'Close your mouth',say:'Close your mouth'};
+    if(m.eyeOpen<0.18) return {kind:'text',text:'Open your eyes wide',say:'Open your eyes wide'};
   }else{
-    if(Math.abs(m.roll)>5) return {kind:'roll',dir:m.roll>0?'cw':'ccw',text:'Keep your head level'};
-    const y=Math.abs(m.yaw3),toward=key==='left'?'left':'right';
-    if(y<25) return {kind:'turn',dir:toward,text:'Turn more this way'};
-    if(y>65) return {kind:'turn',dir:toward==='left'?'right':'left',text:'Turn back a little'};
+    if(Math.abs(m.roll)>5) return {kind:'roll',dir:m.roll>0?'cw':'ccw',text:'Keep your head level',say:'Keep your head level'};
+    const want=key==='left'?1:-1,yy=m.yaw2*want,toward=key==='left'?'left':'right',back=toward==='left'?'right':'left';
+    if(yy<-8) return {kind:'turn',dir:toward,text:'Turn to your '+toward,say:'Turn to your '+toward};
+    if(yy<30) return {kind:'turn',dir:toward,text:'Turn more',say:'Turn a bit more to your '+toward};
+    if(yy>60) return {kind:'turn',dir:back,text:'Turn back a little',say:'Turn back a little'};
   }
   return {ok:true,kind:'text',text:'Perfect'};
 }
@@ -434,12 +510,12 @@ function drawGuide(g){
   const o=$('#oval'),col=g.ok?'#6fdc9a':'#ffb020';
   o.classList.toggle('ok',!!g.ok);o.classList.toggle('bad',!g.ok);
   let t=`<defs><marker id="ah" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="3" markerHeight="3" orient="auto"><path d="M0 0L10 5L0 10z" fill="${col}"/></marker></defs>`;
-  const A=d=>`<path d="${d}" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round" marker-end="url(#ah)"/>`;
+  const A=d=>`<path d="${d}" fill="none" stroke="${col}" stroke-width="14" stroke-linecap="round" marker-end="url(#ah)"/>`;
   if(g.kind==='roll') t+=g.dir==='cw'?A('M45 95 Q150 5 255 95'):A('M255 95 Q150 5 45 95');
-  else if(g.kind==='turn') t+=g.dir==='right'?A('M75 300 L230 300'):A('M225 300 L70 300');
+  else if(g.kind==='turn') t+=g.dir==='right'?A('M40 200 L260 200'):A('M260 200 L40 200');
   else if(g.kind==='closer') t+=A('M75 85 L25 35')+A('M225 85 L275 35')+A('M75 250 L25 300')+A('M225 250 L275 300');
   else if(g.kind==='farther') t+=A('M25 35 L75 85')+A('M275 35 L225 85')+A('M25 300 L75 250')+A('M275 300 L225 250');
-  t+=`<rect x="15" y="352" width="270" height="38" rx="19" fill="rgba(0,0,0,.7)"/><text x="150" y="378" text-anchor="middle" font-size="19" font-weight="700" fill="${col}" font-family="-apple-system,Segoe UI,Roboto,sans-serif">${g.text}</text>`;
+  t+=`<rect x="8" y="345" width="284" height="46" rx="23" fill="rgba(0,0,0,.7)"/><text x="150" y="377" text-anchor="middle" font-size="24" font-weight="800" fill="${col}" font-family="-apple-system,Segoe UI,Roboto,sans-serif">${g.text}</text>`;
   $('#guide').innerHTML=t;
 }
 function clearGuide(){$('#guide').innerHTML='';const o=$('#oval');o.classList.remove('ok','bad');}
@@ -460,7 +536,8 @@ async function liveTick(){
       else live.ok=0;
     }
     drawGuide(g);
-    if(g.ok&&live.ok>=3&&$('#auto').checked){live.ok=0;drawGuide({ok:true,kind:'text',text:'Capturing…'});capture(false);return;}
+    if(g.ok){if(live.ok===1)say('Hold still',true);}else if(g.say)say(g.say);
+    if(g.ok&&live.ok>=3&&$('#auto').checked){live.ok=0;drawGuide({ok:true,kind:'text',text:'Capturing…'});beep(660,0.15,0);live.auto=true;capture(false);return;}
   }catch(e){}
   scheduleLive();
 }
@@ -488,7 +565,7 @@ function controls(){
   $('#controls').innerHTML=c.join('');
   const on=(id,fn)=>{const e=$(id);if(e)e.onclick=fn;};
   on('#bCam',startCam);on('#bNow',()=>capture(false));on('#bTimer',()=>capture(true));on('#bUp',()=>$('#file').click());on('#bPhone',()=>$('#fileCam').click());
-  on('#bRetake',()=>{delete scans[key];showLive();});on('#bKeep',()=>{scans[key].kept=true;showLive();});on('#bNext',()=>{step++;showLive();});on('#bGo',analyseNow);
+  on('#bRetake',()=>{delete scans[key];live.retries=0;hideBanner();showLive();});on('#bKeep',()=>{scans[key].kept=true;showLive();});on('#bNext',()=>{step++;showLive();});on('#bGo',analyseNow);
 }
 function showLive(){
   $('#warn').textContent='';$('#err').textContent='';$('#qual').innerHTML='';
@@ -578,12 +655,12 @@ const SKIN=[
 ];
 function readRow(it,sum){
   const o=sum[it.k]; if(!o) return '';
-  return `<div class="m"><div class="top"><span>${it.l}</span><span class="v">${o.v.toFixed(it.dp)}${it.u&&it.u.length<3?it.u:''}${sdT(o,it.dp)}</span></div>${it.u&&it.u.length>=3?`<div class="small">${it.u}</div>`:''}<div class="small">What it measures: ${it.w}</div><div class="small"><b>In plain words:</b> ${it.plain?it.plain(o.v,sum):''}</div><div class="small"><b>Typical / average:</b> ${it.typ||'No verified population average found for this mesh-based measure, so use it to track your own change over time.'}</div></div>`;
+  return `<div class="m tap" data-hl="${it.k}"><div class="top"><span>${it.l}</span><span class="v">${o.v.toFixed(it.dp)}${it.u&&it.u.length<3?it.u:''}${sdT(o,it.dp)}<span class="chev">›</span></span></div><div class="small"><b>In plain words:</b> ${it.plain?it.plain(o.v,sum):''}</div><div class="more"><div class="in">${it.u&&it.u.length>=3?`<div class="small">Unit: ${it.u}</div>`:''}<div class="small"><b>What it measures:</b> ${it.w}</div><div class="small"><b>Typical / average:</b> ${it.typ||'No verified population average found for this mesh-based measure, so use it to track your own change over time.'}</div></div></div><div class="tip">Tap to see this on your face</div></div>`;
 }
 function canonRow(c,sum){
   const o=sum[c.k]; if(!o) return '';
   const r=o.v, dev=(r/c.ideal-1)*100, ok=Math.abs(dev)<=10, sc=clamp(100*(1-Math.abs(dev)/100/0.30),0,100);
-  return `<div class="m"><div class="top"><span>${c.name} <span class="tag ${ok?'hi':'mid'}">${ok?'within ±10%':(dev>0?'above':'below')+' the ideal'}</span></span><span class="v">${r.toFixed(c.dp)}${sdT(o,c.dp)}</span></div><div class="small">Rule: ${c.rule}. Ideal: ${c.ideal}. Your deviation: ${dev>=0?'+':''}${dev.toFixed(1)}%. Fit score: ${sc.toFixed(0)}/100.</div><div class="small"><b>In plain words:</b> ${c.says(r)}${c.extra?c.extra(sum):''}</div><div class="small"><b>What the studies found:</b> ${c.study}</div></div>`;
+  return `<div class="m tap" data-hl="${c.k}"><div class="top"><span>${c.name} <span class="tag ${ok?'hi':'mid'}">${ok?'within ±10%':(dev>0?'above':'below')+' the ideal'}</span></span><span class="v">${r.toFixed(c.dp)}${sdT(o,c.dp)}<span class="chev">›</span></span></div><div class="small"><b>In plain words:</b> ${c.says(r)}${c.extra?c.extra(sum):''}</div><div class="more"><div class="in"><div class="small"><b>The rule:</b> ${c.rule}. Ideal: ${c.ideal}. Your deviation: ${dev>=0?'+':''}${dev.toFixed(1)}%. Fit score: ${sc.toFixed(0)}/100.</div><div class="small"><b>What the studies found:</b> ${c.study}</div></div></div><div class="tip">Tap to see this on your face</div></div>`;
 }
 const SIDES=[
  {l:'Eye width',R:'eyeW_R',L:'eyeW_L',w:'Horizontal opening of each eye, outer to inner corner.'},
@@ -600,12 +677,12 @@ function sideRow(it,sum){
   const diff=(l.v-r.v)/((l.v+r.v)/2)*100, ad=Math.abs(diff), mm=mmPct(sum,l.v-r.v);
   const bigger=diff>0?'left':'right';
   const msg=ad<3?'The two sides are practically equal.':ad<8?`A small difference, with your ${bigger} side larger. That is common.`:`A clear difference, with your ${bigger} side larger. Head turn, expression or lighting can cause this, so retake and see if it repeats before treating it as real.`;
-  return `<div class="m"><div class="top"><span>${it.l}</span><span class="v">R ${r.v.toFixed(2)} · L ${l.v.toFixed(2)}</span></div><div class="small">Values are % of face height. Difference: ${diff>=0?'+':''}${diff.toFixed(1)}% (left minus right)${mmT(mm)}. ${it.w}</div><div class="small"><b>In plain words:</b> ${msg} (My rough bands: under 3% equal, 3–8% small, over 8% clear.)</div></div>`;
+  return `<div class="m tap" data-hl="side:${it.R}"><div class="top"><span>${it.l}</span><span class="v">R ${r.v.toFixed(2)} · L ${l.v.toFixed(2)}<span class="chev">›</span></span></div><div class="small"><b>In plain words:</b> ${msg}</div><div class="more"><div class="in"><div class="small">Values are % of face height. Difference: ${diff>=0?'+':''}${diff.toFixed(1)}% (left minus right)${mmT(mm)}. ${it.w}</div><div class="small">My rough bands: under 3% equal, 3–8% small, over 8% clear.</div></div></div><div class="tip">Tap to see both sides on your face</div></div>`;
 }
 function midRow(l,k,sum,plainL,plainR){
   const o=sum[k]; if(!o) return '';
   const v=o.v, ad=Math.abs(v), side=v>0?'left':'right';
-  return `<div class="m"><div class="top"><span>${l}</span><span class="v">${ad.toFixed(2)}% to your ${side}${sdT(o,2)}</span></div><div class="small">${mmT(mmPct(sum,v)).trim()} Measured from the vertical line through the middle of your pupils.</div><div class="small"><b>In plain words:</b> ${ad<1?'Basically centred.':ad<2.5?`Slightly off-centre toward your ${side}, which is common.`:`Visibly off-centre toward your ${side}. A turned head or a tilted chin can cause this, so retake before concluding.`} (My rough bands.)</div></div>`;
+  return `<div class="m tap" data-hl="${k}"><div class="top"><span>${l}</span><span class="v">${ad.toFixed(2)}% to your ${side}${sdT(o,2)}<span class="chev">›</span></span></div><div class="small"><b>In plain words:</b> ${ad<1?'Basically centred.':ad<2.5?`Slightly off-centre toward your ${side}, which is common.`:`Visibly off-centre toward your ${side}. A turned head or a tilted chin can cause this, so retake before concluding.`}</div><div class="more"><div class="in"><div class="small">${mmT(mmPct(sum,v)).trim()} Measured from the vertical line through the middle of your pupils. My rough bands: under 1% centred, 1–2.5% slight.</div></div></div><div class="tip">Tap to see this on your face</div></div>`;
 }
 function analyseNow(){
   const f=scans.front,sum=f.sum;
@@ -622,22 +699,21 @@ function renderResults(){
   const f=scans.front; if(!f){return;}
   const sum=f.sum,hist=JSON.parse(localStorage.getItem('sculptlocal.v2')||'[]');
   const L=issues(sum,'front'), ipd=getIPD();
-  let h=`<div class="card"><h3>Calibration (optional)</h3><div class="small">Enter your pupil distance in mm (from a glasses prescription, usually 55–70) and every distance below also appears in millimetres. Without it, results are shown as ratios and percentages only. Accuracy in mm is limited by camera distance and lens, roughly a few millimetres.</div><div class="row"><input id="ipdIn" type="number" step="0.5" min="40" max="90" placeholder="e.g. 63" value="${ipd||''}" style="background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px;width:110px"><button class="sec" id="ipdSave">Save</button></div></div>`;
+  let h=`<div class="card sticky" id="faceCard"><canvas id="overlay"></canvas><div id="hlCap">Tap any reading below. It lights up on your face here.</div><div class="row" style="margin-top:4px"><label class="chk"><input type="checkbox" id="showMesh" checked> Mesh</label><label class="chk"><input type="checkbox" id="showAll"> All markers</label></div></div><div class="card"><h3>Calibration (optional)</h3><div class="small">Enter your pupil distance in mm (from a glasses prescription, usually 55–70) and every distance below also appears in millimetres. Without it, results are shown as ratios and percentages only. Accuracy in mm is limited by camera distance and lens, roughly a few millimetres.</div><div class="row"><input id="ipdIn" type="number" step="0.5" min="40" max="90" placeholder="e.g. 63" value="${ipd||''}" style="background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px;width:110px"><button class="sec" id="ipdSave">Save</button></div></div>`;
   const hm=sum.harmony, met=sum.canonsMet;
   if(hm&&met){
-    h+=`<div class="card"><h3>Harmony index <span class="tag mid">personal study index</span></h3><div style="font-size:40px;font-weight:700">${hm.v.toFixed(0)}<span class="small"> / 100</span>${sdT(hm,0)}</div><div class="small">Canons within ±10% of the classical ideal: <b>${Math.round(met.v)} of 6</b>.</div>
+    h+=`<div class="card m tap" data-hl="harmony" style="padding:14px"><h3>Harmony index <span class="tag mid">personal study index</span></h3><div style="font-size:40px;font-weight:700"><span id="hmNum" data-v="${hm.v.toFixed(0)}">0</span><span class="small"> / 100</span>${sdT(hm,0)}</div><div class="tip">Tap to see the six canons on your face</div><div class="small">Canons within ±10% of the classical ideal: <b>${Math.round(met.v)} of 6</b>.</div>
     <div class="small"><b>In plain words:</b> ${hm.v>=80?'Your proportions sit close to the classical rules overall.':hm.v>=60?'Several of your proportions are close to the classical rules and others differ. That is very common.':'Your proportions differ from the classical rules in several places. That is the normal case: in the studies, individual canons were met by only about 0–51% of healthy people.'}</div>
     <div class="small"><b>How it is built:</b> each of the six canons below scores 100 when your ratio equals the ideal and falls in a straight line to 0 when you are 30% away. The index is the average of the six. The 30% and ±10% cut-offs are my own choices.</div>
     <div class="small"><b>Typical / average:</b> No published distribution exists for this exact index, so there is no verified average. What is published is that individual canons were met by 0–51.5% of the healthy adults tested (Greek review), and the Southern Chinese authors concluded the canons should not be used as aesthetic goals. A mid or low index is therefore normal and says nothing about attractiveness or health.</div></div>`;
   }
   h+=`<div class="card"><h3>Capture quality</h3>${L.length?L.map(t=>`<div class="q" style="color:var(--mid)">⚠ ${t}</div>`).join('')+'<div class="small">Numbers from this scan carry extra error. Retake if you want to compare it with others.</div>':'<div class="q" style="color:var(--good)">✓ No pose, light or focus problems detected.</div>'}<div class="small">Each number below is the median of ${f.samples.length} samples. ± is the sample spread (SD). A wide ± means the measurement is unstable.</div></div>`;
   h+=`<div class="card"><h3>Classical proportion canons</h3><div class="small">The six rules used in the Southern Chinese, Greek and Arabian Peninsula studies. Markers: tr* = top of forehead (a proxy, the mesh has no hairline), n = nasion, sn = subnasale, gn = chin.</div>${CANONS.map(c=>canonRow(c,sum)).join('')}
-   <div class="m"><div class="top"><span>Rule of fifths (extra marker)</span><span class="v">${sum.fifths?sum.fifths.v.toFixed(2)+sdT(sum.fifths,2):'—'}</span></div><div class="small"><b>In plain words:</b> Your face (cheekbone to cheekbone) is ${sum.fifths?sum.fifths.v.toFixed(1):'—'} eye-widths wide. The classical rule says 5. This marker is not counted in the index. I did not retrieve published percentages for it.</div></div></div>`;
+   <div class="m tap" data-hl="fifths"><div class="top"><span>Rule of fifths (extra marker)</span><span class="v">${sum.fifths?sum.fifths.v.toFixed(2)+sdT(sum.fifths,2):'—'}<span class="chev">›</span></span></div><div class="small"><b>In plain words:</b> Your face (cheekbone to cheekbone) is ${sum.fifths?sum.fifths.v.toFixed(1):'—'} eye-widths wide. The classical rule says 5. This marker is not counted in the index. I did not retrieve published percentages for it.</div><div class="tip">Tap to see this on your face</div></div></div>`;
   h+=`<div class="card"><h3>Left side vs right side</h3><div class="small">"Right" and "left" mean YOUR right and left. A face is judged against a vertical midline through the middle of your pupils. In healthy young adults, left-right landmark differences of roughly 0.6–4.6 mm were measured (48 adults, 3D scans), and over half had overall surface asymmetry of 2–5 mm (Raine Study, n=279). So some difference is normal.</div>${SIDES.map(it=>sideRow(it,sum)).join('')}
    ${midRow('Nose tip off the midline','noseDev',sum)}${midRow('Mouth centre off the midline','mouthDev',sum)}${midRow('Chin off the midline','chinDev',sum)}
-   ${sum.mouthTilt?`<div class="m"><div class="top"><span>Mouth-line tilt</span><span class="v">${Math.abs(sum.mouthTilt.v).toFixed(2)}% ${sum.mouthTilt.v>0?'right corner lower':'left corner lower'}${sdT(sum.mouthTilt,2)}</span></div><div class="small"><b>In plain words:</b> ${Math.abs(sum.mouthTilt.v)<1?'Your mouth corners are level.':'One corner sits lower than the other. A half-smile or lip habit commonly causes this.'} (My rough band: under 1% level.)</div></div>`:''}</div>`;
+   ${sum.mouthTilt?`<div class="m tap" data-hl="mouthTilt"><div class="top"><span>Mouth-line tilt</span><span class="v">${Math.abs(sum.mouthTilt.v).toFixed(2)}% ${sum.mouthTilt.v>0?'right corner lower':'left corner lower'}${sdT(sum.mouthTilt,2)}<span class="chev">›</span></span></div><div class="small"><b>In plain words:</b> ${Math.abs(sum.mouthTilt.v)<1?'Your mouth corners are level.':'One corner sits lower than the other. A half-smile or lip habit commonly causes this.'}</div><div class="tip">Tap to see this on your face</div></div>`:''}</div>`;
   for(const g of GROUPS) h+=`<div class="card"><h3>${g.t}</h3>${g.items.map(it=>readRow(it,sum)).join('')}</div>`;
-  h+=`<div class="card"><h3>Front scan with markers</h3><label class="chk"><input type="checkbox" id="showMarkers" checked> Show canon markers (eye gap, nose width, mouth width, cheek width, thirds levels)</label><div class="small" style="margin:6px 0">Mesh, forehead-chin axis (dashed yellow) and the mirrored pairs used for symmetry (green).</div><canvas id="overlay"></canvas></div>`;
   let skinNote='';
   const prev=hist.length>1?hist[hist.length-2]:null,cur=hist[hist.length-1];
   if(prev&&prev.m.luma&&cur.m.luma){
@@ -647,31 +723,132 @@ function renderResults(){
   h+=`<div class="card"><h3>Skin tracker <span class="tag lo">self-comparison only</span></h3><div class="small">Not a skin-health score. See a doctor for any mole, rash or acne concern.${skinNote?'<br><b>'+skinNote+'</b>':''}</div>${SKIN.map(it=>readRow(it,sum)).join('')}<div class="small">Light level: ${sum.luma?sum.luma.v.toFixed(0):'—'} / 255. Left-right light imbalance: ${sum.lr?(sum.lr.v*100).toFixed(0)+'%':'—'}.</div></div>`;
   const ks=Object.keys(scans), chin=ks.map(k=>scans[k].sum.chin3D&&scans[k].sum.chin3D.v).filter(Number.isFinite),jaw=ks.map(k=>scans[k].sum.jaw3D&&scans[k].sum.jaw3D.v).filter(Number.isFinite);
   h+=`<div class="card"><h3>Experimental 3D <span class="tag lo">low confidence</span></h3><div class="small">Google's depth values come from synthetic training data, so treat these as rough. ${ks.length} scan(s).</div>
-   <div class="m"><div class="top"><span>Chin angle (3D)</span><span class="v">${chin.length?median(chin).toFixed(1)+'°':'—'}</span></div><div class="small"><b>In plain words:</b> The same idea as the 2D chin angle but meant to ignore head turn. If it disagrees a lot with the 2D value, depth is unreliable.</div></div>
-   <div class="m"><div class="top"><span>Jaw ÷ cheek width (3D)</span><span class="v">${jaw.length?median(jaw).toFixed(3):'—'}</span></div><div class="small"><b>In plain words:</b> Same as the 2D jaw ratio, measured in 3D.</div></div></div>`;
+   <div class="m tap" data-hl="chin2D"><div class="top"><span>Chin angle (3D)</span><span class="v">${chin.length?median(chin).toFixed(1)+'°':'—'}</span></div><div class="small"><b>In plain words:</b> The same idea as the 2D chin angle but meant to ignore head turn. If it disagrees a lot with the 2D value, depth is unreliable.</div></div>
+   <div class="m tap" data-hl="jawRatio"><div class="top"><span>Jaw ÷ cheek width (3D)</span><span class="v">${jaw.length?median(jaw).toFixed(3):'—'}</span></div><div class="small"><b>In plain words:</b> Same as the 2D jaw ratio, measured in 3D.</div></div></div>`;
   h+=`<div class="row"><button id="again">New session</button><button class="sec" id="dl">Download this result (JSON)</button></div>`;
   $('#resultsBody').innerHTML=h;
   $('#again').onclick=()=>{scans={};step=0;showLive();switchTab('scan');};
   $('#dl').onclick=()=>{const blob=new Blob([JSON.stringify({date:new Date().toISOString(),summary:sum},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='sculptlocal-result.json';a.click();};
   $('#ipdSave').onclick=()=>{const v=parseFloat($('#ipdIn').value);if(v>40&&v<90)localStorage.setItem(IPD_KEY,String(v));else localStorage.removeItem(IPD_KEY);renderResults();};
-  $('#showMarkers').onchange=drawOverlay;
-  drawOverlay();
+  $('#showMesh').onchange=()=>{buildBase();};$('#showAll').onchange=()=>{hl.all=$('#showAll').checked;};
+  initFace();countUp();
 }
-function drawOverlay(){
-  const s=scans.front,c=$('#overlay'),src=s.canvas,k=Math.min(1,720/src.width);
-  c.width=Math.round(src.width*k);c.height=Math.round(src.height*k);
-  const x=c.getContext('2d');x.drawImage(src,0,0,c.width,c.height);
-  const pt=i=>[s.lm[i].x*c.width,s.lm[i].y*c.height];
-  if(typeof FACEMESH_TESSELATION!=='undefined'){x.strokeStyle='rgba(124,196,255,.22)';x.lineWidth=1;x.beginPath();for(const [a,b] of FACEMESH_TESSELATION){const p=pt(a),q=pt(b);x.moveTo(p[0],p[1]);x.lineTo(q[0],q[1]);}x.stroke();}
-  x.strokeStyle='rgba(255,207,107,.9)';x.setLineDash([6,5]);x.lineWidth=2;x.beginPath();const a=pt(10),b=pt(152);x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.stroke();x.setLineDash([]);
-  x.fillStyle='rgba(111,220,154,.95)';for(const [l,r] of PAIRS)for(const i of [l,r]){const p=pt(i);x.beginPath();x.arc(p[0],p[1],3,0,7);x.fill();}
-  const sm=$('#showMarkers');
-  if(!sm||sm.checked){
-    const Ln=(i,j,col,lab)=>{const p=pt(i),q=pt(j);x.strokeStyle=col;x.lineWidth=2.5;x.beginPath();x.moveTo(p[0],p[1]);x.lineTo(q[0],q[1]);x.stroke();if(lab){x.fillStyle=col;x.font='bold 12px sans-serif';x.fillText(lab,(p[0]+q[0])/2-10,(p[1]+q[1])/2-6);}};
-    Ln(133,362,'#ff6b6b','eye gap');Ln(129,358,'#ffd166','nose');Ln(61,291,'#06d6a0','mouth');Ln(234,454,'#c77dff','cheeks');Ln(33,133,'#4cc9f0','');Ln(263,362,'#4cc9f0','');
-    for(const [i,lab] of [[10,'tr*'],[168,'n'],[2,'sn'],[152,'gn']]){const p=pt(i);x.strokeStyle='rgba(255,255,255,.55)';x.lineWidth=1.5;x.setLineDash([4,4]);x.beginPath();x.moveTo(p[0]-70,p[1]);x.lineTo(p[0]+70,p[1]);x.stroke();x.setLineDash([]);x.fillStyle='#fff';x.font='11px sans-serif';x.fillText(lab,p[0]+74,p[1]+4);}
+/* ================= interactive face map ================= */
+const CE='#ff4d5e',CY='#e0a100',CG='#12a67a',CP='#a05cf0',CB='#1f9bd1',CO='#ff8a2b';
+const Ln=(a,b,c,l)=>({t:'line',a,b,c,l}), Pt=(i,c,l)=>({t:'pt',i,c,l}), Mid=()=>({t:'mid'}), Drop=(i,c,l)=>({t:'drop',i,c,l}), Gap=(a,b,c,l,off)=>({t:'gap',a,b,c,l,off}), Lev=(i,l)=>({t:'lev',i,l}), Poly=(ids,c,l)=>({t:'poly',ids,c,l});
+const HL={
+ cOrbital:{cap:'Orbital canon: the gap between your eyes (red) should equal the width of one eye (blue).',ops:[Ln(133,362,CE,'eye gap'),Ln(33,133,CB,'R eye'),Ln(263,362,CB,'L eye')]},
+ cOrbNasal:{cap:'Orbitonasal canon: nose width (yellow) should equal the eye gap (red).',ops:[Ln(133,362,CE,'eye gap'),Ln(129,358,CY,'nose')]},
+ cNasoOral:{cap:'Naso-oral canon: mouth width (green) should be 1.5 times nose width (yellow).',ops:[Ln(129,358,CY,'nose'),Ln(61,291,CG,'mouth')]},
+ cNasoFacial:{cap:'Nasofacial canon: nose width (yellow) should be one quarter of face width (purple).',ops:[Ln(129,358,CY,'nose'),Ln(234,454,CP,'face width')]},
+ cMidLower:{cap:'Thirds: the middle third (brow line to nose base) should equal the lower third (nose base to chin).',ops:[Lev(168,'n (nasion)'),Lev(2,'sn (nose base)'),Lev(152,'gn (chin)'),Gap(168,2,CB,'middle',0.62),Gap(2,152,CO,'lower',0.62)]},
+ cLowerSplit:{cap:'Lower-face split: nose base to mouth should be half of mouth to chin.',ops:[Lev(2,'sn'),Lev(13,'mouth'),Lev(152,'gn'),Gap(2,13,CG,'1 part',0.62),Gap(13,152,CO,'2 parts',0.62)]},
+ fifths:{cap:'Rule of fifths: face width (purple) should be about five eye-widths (blue).',ops:[Ln(234,454,CP,'face width'),Ln(33,133,CB,''),Ln(263,362,CB,'')]},
+ harmony:{cap:'Harmony index: the six canons together.',ops:[Ln(133,362,CE,'eye gap'),Ln(33,133,CB,''),Ln(263,362,CB,''),Ln(129,358,CY,'nose'),Ln(61,291,CG,'mouth'),Ln(234,454,CP,'face'),Gap(168,2,CB,'',0.62),Gap(2,152,CO,'',0.62)]},
+ asym:{cap:'Symmetry: the green pairs are compared across the midline after levelling the face.',ops:[Mid(),...[[33,263],[133,362],[159,386],[145,374],[46,276],[105,334],[70,300],[61,291],[234,454],[93,323],[58,288],[172,397],[129,358],[50,280],[205,425],[132,361]].flatMap(([a,b])=>[Pt(a,CG,''),Pt(b,CO,'')])]},
+ jawRatio:{cap:'Jaw width (orange) compared with cheekbone width (purple).',ops:[Ln(58,288,CO,'jaw'),Ln(234,454,CP,'cheeks')]},
+ chin2D:{cap:'Chin angle: the angle at the chin between the two jaw points.',ops:[Ln(58,152,CO,''),Ln(288,152,CO,''),Pt(152,CE,'chin')]},
+ faceWH:{cap:'Face width (purple) against face height (yellow).',ops:[Ln(234,454,CP,'width'),Ln(10,152,CY,'height')]},
+ eyeOpen:{cap:'Eye opening: the lid gap of each eye against its width.',ops:[Ln(159,145,CE,''),Ln(386,374,CE,''),Ln(33,133,CB,''),Ln(263,362,CB,'')]},
+ eyeMatch:{cap:'Left and right eye widths compared.',ops:[Ln(33,133,CG,'R'),Ln(263,362,CO,'L')]},
+ canthal:{cap:'Eye gap (red) against eye width (blue).',ops:[Ln(133,362,CE,'gap'),Ln(33,133,CB,''),Ln(263,362,CB,'')]},
+ ipdW:{cap:'Pupil gap (red) against cheekbone width (purple).',ops:[Ln(468,473,CE,'pupils'),Ln(234,454,CP,'cheeks')]},
+ eyeMouth:{cap:'Distance from your eye line to your mouth, against face length.',ops:[Ln(468,473,CE,''),{t:'eyemouth'},Ln(10,152,CY,'length')]},
+ tex:{cap:'Skin texture is measured on the forehead and cheeks (shaded).',ops:[Poly([67,109,10,338,297,336,9,107],CB,'forehead'),Poly([50,101,118,117,123,187,205],CB,''),Poly([280,330,347,346,352,411,425],CB,'')]},
+ col:{cap:'Skin colour spread is measured on the same forehead and cheek patches.',ops:[Poly([67,109,10,338,297,336,9,107],CO,'forehead'),Poly([50,101,118,117,123,187,205],CO,''),Poly([280,330,347,346,352,411,425],CO,'')]},
+ noseDev:{cap:'How far your nose tip sits from the midline.',ops:[Mid(),Drop(1,CY,'nose tip')]},
+ mouthDev:{cap:'How far the centre of your mouth sits from the midline.',ops:[Mid(),Drop(13,CG,'mouth centre')]},
+ chinDev:{cap:'How far your chin sits from the midline.',ops:[Mid(),Drop(152,CO,'chin')]},
+ mouthTilt:{cap:'Mouth corners: are they level?',ops:[Ln(61,291,CG,'mouth line'),Pt(61,CG,'R'),Pt(291,CO,'L')]}
+};
+const SIDE_HL={eyeW_R:[[33,133],[263,362],'Eye width on each side'],eyeH_R:[[159,145],[386,374],'Eye opening height on each side'],brow_R:[[105,159],[334,386],'Brow to eyelid on each side']};
+const SIDE_DROP={eyeMid_R:[133,362,'Inner eye corner to the midline'],zyMid_R:[234,454,'Cheekbone to the midline'],alMid_R:[129,358,'Nose wing to the midline'],mouthMid_R:[61,291,'Mouth corner to the midline'],jawMid_R:[58,288,'Jaw point to the midline']};
+function hlSpec(id){
+  if(id.startsWith('side:')){
+    const k=id.slice(5);
+    if(SIDE_HL[k]){const [r,l,cap]=SIDE_HL[k];return {cap:cap+'. R (green) is your right, L (orange) your left.',ops:[Ln(r[0],r[1],CG,'R'),Ln(l[0],l[1],CO,'L')]};}
+    if(SIDE_DROP[k]){const [r,l,cap]=SIDE_DROP[k];return {cap:cap+'. R (green) is your right, L (orange) your left.',ops:[Mid(),Drop(r,CG,'R'),Drop(l,CO,'L')]};}
   }
+  return HL[id]||null;
 }
+const hl={spec:null,t0:0,all:false,raf:0,base:null};
+function initFace(){hl.spec=null;buildBase();cancelAnimationFrame(hl.raf);hl.raf=requestAnimationFrame(tickFace);}
+function buildBase(){
+  const s=scans.front,c=$('#overlay');if(!s||!c)return;
+  const src=s.canvas,k=Math.min(1,720/src.width);
+  c.width=Math.round(src.width*k);c.height=Math.round(src.height*k);
+  const b=document.createElement('canvas');b.width=c.width;b.height=c.height;const x=b.getContext('2d');
+  x.drawImage(src,0,0,b.width,b.height);
+  if($('#showMesh')&&$('#showMesh').checked&&typeof FACEMESH_TESSELATION!=='undefined'){x.strokeStyle='rgba(255,255,255,.28)';x.lineWidth=1;x.beginPath();for(const [a,bb] of FACEMESH_TESSELATION){const p=[s.lm[a].x*b.width,s.lm[a].y*b.height],q=[s.lm[bb].x*b.width,s.lm[bb].y*b.height];x.moveTo(p[0],p[1]);x.lineTo(q[0],q[1]);}x.stroke();}
+  hl.base=b;
+}
+function setHL(id){
+  const sp=id?hlSpec(id):null;hl.spec=sp;hl.t0=performance.now();
+  const cap=$('#hlCap');if(cap){cap.style.opacity=0;setTimeout(()=>{cap.textContent=sp?sp.cap:'Tap any reading below. It lights up on your face here.';cap.style.opacity=1;},120);}
+}
+function tickFace(now){
+  const c=$('#overlay');if(!c||!scans.front){return;}
+  const s=scans.front,x=c.getContext('2d'),W=c.width,H=c.height;
+  if(!hl.base)buildBase();
+  x.drawImage(hl.base,0,0);
+  const pt=i=>[s.lm[i].x*W,s.lm[i].y*H];
+  const ops=hl.spec?hl.spec.ops:(hl.all?HL.harmony.ops.concat(HL.asym.ops.slice(0,1)):[]);
+  const el=now-hl.t0,pulse=.5+.5*Math.sin(now/260);
+  const fs=Math.max(11,W/46);
+  const pr=s.lm.length>=478?pt(468):[(pt(33)[0]+pt(133)[0])/2,(pt(33)[1]+pt(133)[1])/2], pl=s.lm.length>=478?pt(473):[(pt(263)[0]+pt(362)[0])/2,(pt(263)[1]+pt(362)[1])/2];
+  const mid=[(pr[0]+pl[0])/2,(pr[1]+pl[1])/2], ux=pl[0]-pr[0],uy=pl[1]-pr[1],ul=Math.hypot(ux,uy)||1,u=[ux/ul,uy/ul],nv=[-u[1],u[0]];
+  const FH=Math.hypot(pt(10)[0]-pt(152)[0],pt(10)[1]-pt(152)[1]), ZY=Math.hypot(pt(234)[0]-pt(454)[0],pt(234)[1]-pt(454)[1]);
+  const lab=(t,px,py,col)=>{if(!t)return;x.font='bold '+fs+'px sans-serif';x.lineWidth=4;x.strokeStyle='rgba(0,0,0,.75)';x.strokeText(t,px,py);x.fillStyle=col||'#fff';x.fillText(t,px,py);};
+  const dot=(p,col,r)=>{x.fillStyle=col;x.beginPath();x.arc(p[0],p[1],r,0,7);x.fill();x.strokeStyle='#fff';x.lineWidth=1.5;x.stroke();};
+  ops.forEach((o,idx)=>{
+    const pRaw=(el-idx*90)/520, p=hl.spec?Math.max(0,Math.min(1,pRaw)):1, e=1-Math.pow(1-p,3);
+    if(p<=0)return;
+    x.save();x.lineCap='round';x.globalAlpha=Math.min(1,p*1.6);
+    if(o.t==='line'){
+      const a=pt(o.a),b=pt(o.b),q=[a[0]+(b[0]-a[0])*e,a[1]+(b[1]-a[1])*e];
+      x.strokeStyle='rgba(0,0,0,.6)';x.lineWidth=6+pulse*2;x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(q[0],q[1]);x.stroke();
+      x.strokeStyle=o.c;x.lineWidth=3.5+pulse*2;x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(q[0],q[1]);x.stroke();
+      dot(a,o.c,3.5);if(p>=1)dot(b,o.c,3.5);
+      if(p>=1)lab(o.l,(a[0]+b[0])/2-fs,(a[1]+b[1])/2-fs*.7,o.c);
+    }else if(o.t==='pt'){const a=pt(o.i);dot(a,o.c,3+pulse*3*(hl.spec?1:0));if(p>=1)lab(o.l,a[0]+6,a[1]-6,o.c);}
+    else if(o.t==='mid'){
+      const a=[mid[0]-nv[0]*FH*.62*e,mid[1]-nv[1]*FH*.62*e],b=[mid[0]+nv[0]*FH*.62*e,mid[1]+nv[1]*FH*.62*e];
+      x.setLineDash([7,6]);x.strokeStyle='rgba(0,0,0,.6)';x.lineWidth=4;x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.stroke();x.strokeStyle='#fff';x.lineWidth=2;x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.stroke();x.setLineDash([]);
+    }else if(o.t==='drop'){
+      const a=pt(o.i),d=(a[0]-mid[0])*u[0]+(a[1]-mid[1])*u[1],f=[a[0]-u[0]*d*e,a[1]-u[1]*d*e];
+      x.strokeStyle='rgba(0,0,0,.6)';x.lineWidth=6;x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(f[0],f[1]);x.stroke();x.strokeStyle=o.c;x.lineWidth=3.5+pulse*2;x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(f[0],f[1]);x.stroke();
+      dot(a,o.c,4);if(p>=1)lab(o.l,a[0]+(d>0?-fs*2.2:6),a[1]-8,o.c);
+    }else if(o.t==='lev'){
+      const a=pt(o.i),L=ZY*.62*e;x.setLineDash([5,5]);x.strokeStyle='rgba(255,255,255,.9)';x.lineWidth=1.8;x.beginPath();x.moveTo(a[0]-L,a[1]);x.lineTo(a[0]+L,a[1]);x.stroke();x.setLineDash([]);
+      if(p>=1)lab(o.l,a[0]+L+4,a[1]+4,'#fff');
+    }else if(o.t==='gap'){
+      const a=pt(o.a),b=pt(o.b),xx=a[0]+ZY*o.off*(a[0]<W/2?1:1),y1=a[1],y2=a[1]+(b[1]-a[1])*e;
+      x.strokeStyle='rgba(0,0,0,.6)';x.lineWidth=7;x.beginPath();x.moveTo(xx,y1);x.lineTo(xx,y2);x.stroke();x.strokeStyle=o.c;x.lineWidth=4+pulse*2;x.beginPath();x.moveTo(xx,y1);x.lineTo(xx,y2);x.stroke();
+      if(p>=1)lab(o.l,xx-fs*3.4,(y1+y2)/2+4,o.c);
+    }else if(o.t==='poly'){
+      x.beginPath();o.ids.forEach((i,k)=>{const q=pt(i);k?x.lineTo(q[0],q[1]):x.moveTo(q[0],q[1]);});x.closePath();
+      x.fillStyle=o.c;x.globalAlpha=(.18+.22*pulse)*Math.min(1,p*1.6);x.fill();x.globalAlpha=Math.min(1,p*1.6);x.strokeStyle=o.c;x.lineWidth=2.5;x.stroke();
+    }else if(o.t==='eyemouth'){
+      const m=pt(13),f=[m[0]-u[0]*((m[0]-mid[0])*u[0]+(m[1]-mid[1])*u[1]),m[1]-u[1]*((m[0]-mid[0])*u[0]+(m[1]-mid[1])*u[1])],g=[mid[0]+(f[0]-mid[0])*e,mid[1]+(f[1]-mid[1])*e];
+      x.strokeStyle=CG;x.lineWidth=4+pulse*2;x.beginPath();x.moveTo(mid[0],mid[1]);x.lineTo(m[0],m[1]);x.stroke();dot(m,CG,4);if(p>=1)lab('eyes to mouth',m[0]+8,(mid[1]+m[1])/2,CG);
+    }
+    x.restore();
+  });
+  hl.raf=requestAnimationFrame(tickFace);
+}
+function countUp(){
+  const el=$('#hmNum');if(!el)return;const to=+el.dataset.v,t0=performance.now();
+  (function f(n){const k=Math.min(1,(n-t0)/900);el.textContent=Math.round(to*(1-Math.pow(1-k,3)));if(k<1)requestAnimationFrame(f);})(t0);
+}
+document.addEventListener('click',e=>{
+  const row=e.target.closest('#resultsBody .tap');if(!row)return;
+  const was=row.classList.contains('active');
+  document.querySelectorAll('#resultsBody .tap.active').forEach(r=>r.classList.remove('active'));
+  if(was){setHL(null);return;}
+  row.classList.add('active');setHL(row.dataset.hl);
+  const fc=$('#faceCard');if(fc&&fc.getBoundingClientRect().top<-5)fc.scrollIntoView({behavior:'smooth',block:'start'});
+  try{if(navigator.vibrate)navigator.vibrate(12);}catch(_){}
+});
 
 /* ================= trends ================= */
 const TREND_KEYS=[['harmony','Harmony index (0–100)',1],['canonsMet','Canons within ±10% (of 6)',0],['cOrbital','Orbital canon ratio',2],['cOrbNasal','Orbitonasal canon ratio',2],['cNasoOral','Naso-oral canon ratio',2],['cNasoFacial','Nasofacial canon ratio',3],['cMidLower','Middle ÷ lower third',2],['cLowerSplit','Lower-face split',2],['asym','Left-right offset (% face height)',2],['jawRatio','Jaw ÷ cheek width',3],['chin2D','Chin angle (°)',1],['faceWH','Face width ÷ height',3],['canthal','Inner-eye gap ÷ eye width',3],['ipdW','Pupil gap ÷ cheek width',3],['eyeMouth','Eyes-to-mouth ÷ face length',3],['tex','Skin texture index (same light only)',2],['col','Skin colour spread (same light only)',2]];
@@ -685,20 +862,21 @@ function drawTrend(){
   const k=$('#trendSel').value||TREND_KEYS[0][0],dp=TREND_KEYS.find(t=>t[0]===k)[2];
   const H=getHist().filter(r=>r.m[k]);
   const c=$('#trend'),W=c.width=720,Hh=c.height=260,x=c.getContext('2d');
-  x.fillStyle='#000';x.fillRect(0,0,W,Hh);
+  const CS=getComputedStyle(document.documentElement),cv=n=>CS.getPropertyValue(n).trim();
+  x.fillStyle=cv('--plot');x.fillRect(0,0,W,Hh);
   const note=$('#trendNote');
-  if(H.length<1){x.fillStyle='#8b93a7';x.font='16px sans-serif';x.fillText('No scans yet',20,40);note.textContent='';return;}
+  if(H.length<1){x.fillStyle=cv('--mut');x.font='16px sans-serif';x.fillText('No scans yet',20,40);note.textContent='';return;}
   const vals=H.flatMap(r=>[r.m[k].v-(r.m[k].sd||0)*2,r.m[k].v+(r.m[k].sd||0)*2]);
   let lo=Math.min(...vals),hi=Math.max(...vals);if(hi-lo<1e-9){lo-=1;hi+=1;}const pad=(hi-lo)*.15;lo-=pad;hi+=pad;
   const X=i=>40+(H.length===1?320:i*(W-70)/(H.length-1)),Y=v=>Hh-30-(v-lo)/(hi-lo)*(Hh-60);
-  x.strokeStyle='#262b36';x.fillStyle='#8b93a7';x.font='11px sans-serif';
+  x.strokeStyle=cv('--line');x.fillStyle=cv('--mut');x.font='11px sans-serif';
   for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Y(v);x.beginPath();x.moveTo(40,y);x.lineTo(W-10,y);x.stroke();x.fillText(v.toFixed(dp),2,y+4);}
-  x.strokeStyle='#7cc4ff';x.lineWidth=2;x.beginPath();H.forEach((r,i)=>{const px=X(i),py=Y(r.m[k].v);i?x.lineTo(px,py):x.moveTo(px,py);});x.stroke();
+  x.strokeStyle=cv('--acc');x.lineWidth=2;x.beginPath();H.forEach((r,i)=>{const px=X(i),py=Y(r.m[k].v);i?x.lineTo(px,py):x.moveTo(px,py);});x.stroke();
   H.forEach((r,i)=>{
     const px=X(i),py=Y(r.m[k].v),sd=r.m[k].sd;
-    if(sd!=null){x.strokeStyle='rgba(255,207,107,.9)';x.lineWidth=1.5;x.beginPath();x.moveTo(px,Y(r.m[k].v-2*sd));x.lineTo(px,Y(r.m[k].v+2*sd));x.stroke();}
-    x.fillStyle='#e8eaf0';x.beginPath();x.arc(px,py,4,0,7);x.fill();
-    x.fillStyle='#8b93a7';x.fillText(new Date(r.t).toLocaleDateString(undefined,{month:'short',day:'numeric'}),px-16,Hh-10);
+    if(sd!=null){x.strokeStyle=cv('--sd');x.lineWidth=1.5;x.beginPath();x.moveTo(px,Y(r.m[k].v-2*sd));x.lineTo(px,Y(r.m[k].v+2*sd));x.stroke();}
+    x.fillStyle=cv('--dot');x.beginPath();x.arc(px,py,4,0,7);x.fill();
+    x.fillStyle=cv('--mut');x.fillText(new Date(r.t).toLocaleDateString(undefined,{month:'short',day:'numeric'}),px-16,Hh-10);
   });
   if(H.length<2){note.textContent='One session so far. Bars show ±2 SD of that session\'s measurement noise.';return;}
   const a=H[H.length-2].m[k],b=H[H.length-1].m[k],d=b.v-a.v;
@@ -718,6 +896,14 @@ $('#csv').onclick=()=>{
 };
 
 /* ================= tabs ================= */
+function applyTheme(t){
+  document.documentElement.dataset.theme=t;
+  const m=document.querySelector('meta[name=theme-color]');if(m)m.content=t==='dark'?'#0f1115':'#f3f6f8';
+  $('#themeBtn').textContent=t==='dark'?'Light mode':'Dark mode';
+  try{localStorage.setItem('sculptlocal.theme',t);}catch(e){}
+  if(!$('#tab-trends').classList.contains('hidden'))drawTrend();
+}
+$('#themeBtn').onclick=()=>applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
 function switchTab(t){
   for(const b of document.querySelectorAll('nav button')){b.classList.toggle('on',b.dataset.tab===t);b.classList.toggle('sec',b.dataset.tab!==t);}
   for(const id of ['scan','results','trends','science'])$('#tab-'+id).classList.toggle('hidden',id!==t);
@@ -725,6 +911,7 @@ function switchTab(t){
   if(t==='scan')scheduleLive();
 }
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+applyTheme((()=>{try{return localStorage.getItem('sculptlocal.theme')||'light';}catch(e){return 'light';}})());
 renderTrendSel();showLive();
 </script>
 </body>

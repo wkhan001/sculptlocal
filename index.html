@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f1115">
+<title>SculptLocal v2 — private face measurement</title>
+<style>
+:root{--bg:#0f1115;--card:#171a21;--line:#262b36;--tx:#e8eaf0;--mut:#8b93a7;--acc:#7cc4ff;--good:#6fdc9a;--mid:#ffcf6b;--bad:#ff7b7b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{padding:16px 16px 4px;max-width:780px;margin:0 auto}
+h1{margin:0;font-size:22px}h1 span{color:var(--acc)}
+.sub{color:var(--mut);font-size:13px}
+nav{display:flex;gap:6px;max-width:780px;margin:8px auto 0;padding:0 16px;overflow-x:auto}
+nav button{background:transparent;color:var(--mut);border:1px solid var(--line);white-space:nowrap}
+nav button.on{color:var(--tx);border-color:var(--acc)}
+main{max-width:780px;margin:0 auto;padding:6px 16px 60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}
+.steps{display:flex;gap:8px;margin-bottom:10px}
+.chip{flex:1;text-align:center;padding:8px 4px;border-radius:10px;border:1px solid var(--line);color:var(--mut);font-size:13px}
+.chip.on{border-color:var(--acc);color:var(--tx)}.chip.done{border-color:var(--good);color:var(--good)}
+.stage{position:relative;width:100%;aspect-ratio:3/4;max-height:68vh;background:#000;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.stage video,.stage img{width:100%;height:100%;object-fit:cover}
+#video{transform:scaleX(-1)}
+.oval{position:absolute;left:50%;top:50%;width:62%;height:74%;transform:translate(-50%,-50%);border:2px dashed rgba(124,196,255,.7);border-radius:50%;pointer-events:none}
+.count{position:absolute;font-size:72px;font-weight:700;color:#fff;text-shadow:0 2px 12px #000}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
+button{background:var(--acc);color:#04121d;border:0;border-radius:10px;padding:10px 14px;font-weight:600;font-size:14px;cursor:pointer}
+button.sec{background:transparent;color:var(--tx);border:1px solid var(--line)}
+button:disabled{opacity:.4;cursor:default}
+select{background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px}
+.hint{color:var(--mut);font-size:13px;margin:8px 0 0}
+.warn{color:var(--mid);font-size:13px;margin-top:6px}.err{color:var(--bad);font-size:13px;margin-top:6px}
+.live{font-size:13px;margin-top:8px;min-height:20px}
+.m{padding:10px 0;border-top:1px solid var(--line)}.m:first-of-type{border-top:0}
+.m .top{display:flex;justify-content:space-between;gap:10px;font-weight:600}
+.m .v{font-variant-numeric:tabular-nums;white-space:nowrap}
+.small{color:var(--mut);font-size:12.5px}
+.ref{font-size:12.5px;color:var(--acc);margin-top:2px}
+h3{margin:0 0 4px;font-size:16px}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;border:1px solid var(--line);color:var(--mut);margin-left:6px}
+.tag.hi{color:var(--good);border-color:var(--good)}.tag.mid{color:var(--mid);border-color:var(--mid)}.tag.lo{color:var(--bad);border-color:var(--bad)}
+ul{padding-left:18px;margin:6px 0}li{margin:4px 0}
+canvas{width:100%;border-radius:12px;background:#000}
+a{color:var(--acc)}
+.hidden{display:none}
+.q{font-size:13px;margin:3px 0}
+footer{color:var(--mut);font-size:12px;max-width:780px;margin:0 auto;padding:0 16px 40px}
+label.chk{font-size:13px;color:var(--mut);display:flex;gap:6px;align-items:center}
+</style>
+</head>
+<body>
+<header>
+  <h1>Sculpt<span>Local</span> <span style="font-size:12px;color:var(--mut)">v2</span></h1>
+  <div class="sub">Careful face measurement, on this device only. It reports measurements with their uncertainty. It does not rate your looks.</div>
+</header>
+<nav>
+  <button class="on" data-tab="scan">Scan</button>
+  <button class="sec" data-tab="results">Results</button>
+  <button class="sec" data-tab="trends">Trends</button>
+  <button class="sec" data-tab="science">Science &amp; limits</button>
+</nav>
+<main>
+
+<section id="tab-scan">
+  <div class="card">
+    <div class="steps" id="steps"></div>
+    <div class="stage" id="stage">
+      <video id="video" playsinline muted class="hidden"></video>
+      <img id="shot" class="hidden" alt="captured photo">
+      <div class="oval" id="oval"></div>
+      <div class="count hidden" id="count"></div>
+      <div class="hint" id="placeholder" style="padding:20px;text-align:center">Start the camera, or upload a photo.</div>
+    </div>
+    <div class="live" id="live"></div>
+    <div class="hint" id="stepHint"></div>
+    <div id="qual"></div>
+    <div class="warn" id="warn"></div>
+    <div class="err" id="err"></div>
+    <div class="row" id="controls"></div>
+    <div class="row"><label class="chk"><input type="checkbox" id="auto"> Auto-capture when pose is good</label></div>
+    <input type="file" id="file" accept="image/*" class="hidden">
+    <input type="file" id="fileCam" accept="image/*" capture="user" class="hidden">
+  </div>
+</section>
+
+<section id="tab-results" class="hidden">
+  <div id="resultsBody"><div class="card small">Take a front scan, then press Analyse.</div></div>
+</section>
+
+<section id="tab-trends" class="hidden">
+  <div class="card">
+    <h3>Change over time</h3>
+    <div class="small">Each point is one session with its own uncertainty bar. A change only counts as real if it is larger than the combined noise of the two sessions.</div>
+    <div class="row"><select id="trendSel"></select><button class="sec" id="csv">Export CSV</button><button class="sec" id="clr">Clear history</button></div>
+    <canvas id="trend" height="260"></canvas>
+    <div id="trendNote" class="small" style="margin-top:8px"></div>
+  </div>
+</section>
+
+<section id="tab-science" class="hidden">
+  <div class="card">
+    <h3>What this app is</h3>
+    <div class="small">A measurement tool. It finds 478 landmarks on your photo with Google's MediaPipe Face Mesh, computes distances, angles and ratios from the front view, and tells you how noisy each number is. It has no beauty score on purpose.</div>
+  </div>
+  <div class="card">
+    <h3>Why there is no "harmony index"</h3>
+    <ul class="small">
+      <li>The classical "ideal" proportions (equal facial thirds, eye-width spacing and similar) rarely hold in real, normal faces. Studies on <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3532441/" target="_blank" rel="noopener">Southern Chinese</a>, Greek and <a href="https://head-face-med.biomedcentral.com/articles/10.1186/s13005-015-0064-y" target="_blank" rel="noopener">Arabian Peninsula</a> adults found most people do not match them. So this app does not grade you against them.</li>
+      <li>Facial symmetry is a small factor in attractiveness research, and its link to actual health is weak. A study of 4,732 teenagers from the ALSPAC cohort found <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC4150332" target="_blank" rel="noopener">no association between facial asymmetry and childhood health</a>.</li>
+      <li>The one published "ideal" that is based on average faces is Pallett et al. 2010: <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2814183" target="_blank" rel="noopener">eyes-to-mouth about 36% of face length, eye spacing about 46% of face width</a>, tested on young white female faces, where the optimum matched the average. The app shows your values next to these as a reference point, not a target. Its landmarks differ from that paper's (see below).</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>How measurement noise is handled</h3>
+    <ul class="small">
+      <li>Landmark models usually give coordinates without any uncertainty, which can leave <a href="https://isprs-archives.copernicus.org/articles/XLVIII-G-2025/225/2025/isprs-archives-XLVIII-G-2025-225-2025.pdf" target="_blank" rel="noopener">large error bounds on distances</a>. So each scan is measured many times: 8 burst frames from the camera, or 5 slightly shifted and scaled copies of an uploaded photo. The app reports the median and the spread (SD).</li>
+      <li>Lighting and head angle <a href="https://arxiv.org/abs/2507.18248" target="_blank" rel="noopener">affect landmark accuracy</a>. Capture-quality checks (tilt, turn, open mouth, blinks, light balance, sharpness) warn you before you trust a number.</li>
+      <li>The model's depth (z) values come from synthetic training data per Google's model card, so all main measurements use the front view in 2D. The 3D numbers from the side views are labelled experimental.</li>
+      <li>Jaw points on the mesh are approximate positions, not marked by a clinician. Camera distance and lens also distort ratios (hold the camera at eye level, an arm and a half away or more).</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>What the evidence says about popular "fixes"</h3>
+    <ul class="small">
+      <li><b>Daily sunscreen:</b> in a randomised trial of 903 adults under 55, daily SPF 15 use gave <a href="https://doi.org/10.7326/0003-4819-158-11-201306040-00002" target="_blank" rel="noopener">24% less skin photoaging after 4.5 years</a> than discretionary use (measured on the backs of the hands).</li>
+      <li><b>Jaw and "mewing" exercises:</b> a 2025 systematic review of mechanical facial exercises in adults concluded the <a href="https://academic.oup.com/asjopenforum/advance-article/8313738" target="_blank" rel="noopener">evidence is insufficient to show they work</a>. Before-and-after photos are easily explained by angle, light, weight change and growth.</li>
+      <li><b>Asymmetry or bite concerns:</b> worth a dentist or orthodontist, not an app. This app cannot diagnose anything.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>What it can't do</h3>
+    <ul class="small">
+      <li>It cannot say if you are attractive, healthy, or need treatment.</li>
+      <li>Skin numbers are for comparing yourself to yourself under the same lighting. They are not a skin-health test. Any changing mole or lesion needs a doctor.</li>
+      <li>The reference values are from specific groups and may not fit you.</li>
+      <li>If tracking your face makes you feel worse, stop. That matters more than any number here.</li>
+    </ul>
+  </div>
+</section>
+</main>
+<footer>Landmark model: Google MediaPipe Face Mesh (Apache-2.0), bundled and run in your browser. Nothing leaves your device. Only numeric results are stored (localStorage), never photos.</footer>
+
+<script src="mp/face_mesh.js"></script>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const median=a=>{const s=a.slice().sort((x,y)=>x-y),n=s.length;return n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2;};
+const sdev=a=>{if(a.length<3)return null;const m=a.reduce((x,y)=>x+y)/a.length;return Math.sqrt(a.reduce((x,y)=>x+(y-m)*(y-m),0)/(a.length-1));};
+const lerp=(a,b,t)=>a+(b-a)*t;
+
+const STEPS=[
+ {key:'front',label:'Front',hint:'Required. Look straight into the lens, head level, neutral relaxed face, mouth closed, eyes open, hair off your forehead and ears if you can, even light on both sides. Camera at eye level, an arm and a half away or further.'},
+ {key:'left',label:'Left 45° (optional)',hint:'Optional, experimental. Turn about 45° and keep your chin level. Only feeds the low-confidence 3D numbers.'},
+ {key:'right',label:'Right 45° (optional)',hint:'Optional, experimental. Turn about 45° the other way.'}
+];
+
+/* ================= Face Mesh (serialised) ================= */
+let fm=null,pending=null,lock=Promise.resolve();
+async function getFM(){
+  if(fm) return fm;
+  fm=new FaceMesh({locateFile:f=>'mp/'+f});
+  fm.setOptions({maxNumFaces:1,refineLandmarks:true,minDetectionConfidence:0.5,staticImageMode:true});
+  fm.onResults(r=>{ if(pending){const p=pending;pending=null;p(r);} });
+  await fm.initialize();
+  return fm;
+}
+function detect(canvas){
+  const run=lock.then(async()=>{
+    const f=await getFM();
+    return new Promise(async(res,rej)=>{ pending=res; try{await f.send({image:canvas});}catch(e){pending=null;rej(e);} });
+  });
+  lock=run.catch(()=>{});
+  return run;
+}
+
+/* ================= measurements ================= */
+const PAIRS=[[33,263],[133,362],[159,386],[145,374],[46,276],[105,334],[70,300],[61,291],[234,454],[93,323],[58,288],[172,397],[129,358],[50,280],[205,425],[132,361]];
+
+function metrics2D(lm,w,h){
+  const p=i=>[lm[i].x*w,lm[i].y*h];
+  const d=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+  const zyg=d(p(234),p(454)), H=d(p(10),p(152)), jaw=d(p(58),p(288));
+  const eyeR=d(p(33),p(133)), eyeL=d(p(263),p(362));
+  // angle at chin between the two jaw points
+  const ch=p(152),a=p(58),b=p(288);
+  const u=[a[0]-ch[0],a[1]-ch[1]],v=[b[0]-ch[0],b[1]-ch[1]];
+  const chin=Math.acos(clamp((u[0]*v[0]+u[1]*v[1])/(Math.hypot(...u)*Math.hypot(...v)),-1,1))*180/Math.PI;
+  // symmetry: rotate so the forehead-chin axis is vertical, mirror about it
+  const pts=lm.slice(0,468).map(q=>[q.x*w,q.y*h]);
+  const th=Math.atan2(pts[152][0]-pts[10][0],pts[152][1]-pts[10][1]),c=Math.cos(th),s=Math.sin(th);
+  const rot=pts.map(q=>[q[0]*c-q[1]*s,q[0]*s+q[1]*c]);
+  const mid=(rot[10][0]+rot[168][0]+rot[2][0]+rot[152][0])/4;
+  let tot=0;
+  for(const [l,r] of PAIRS){tot+=(Math.abs((rot[l][0]-mid)+(rot[r][0]-mid))+Math.abs(rot[l][1]-rot[r][1]))/2;}
+  const asym=tot/PAIRS.length/H*100;
+  let ipdW=NaN,eyeMouth=NaN;
+  if(lm.length>=478){
+    const ir=p(468),il=p(473); ipdW=d(ir,il)/zyg;
+    const m=[(ir[0]+il[0])/2,(ir[1]+il[1])/2],st=p(13),ax=[(p(152)[0]-p(10)[0])/H,(p(152)[1]-p(10)[1])/H];
+    eyeMouth=Math.abs((st[0]-m[0])*ax[0]+(st[1]-m[1])*ax[1])/H;
+  }
+  const open=(d(p(159),p(145))/eyeR+d(p(386),p(374))/eyeL)/2;
+  return {
+    asym, jawRatio:jaw/zyg, chin2D:chin, faceWH:zyg/H,
+    ipdW, eyeMouth,
+    canthal:d(p(133),p(362))/((eyeR+eyeL)/2),
+    eyeOpen:open, eyeMatch:Math.min(eyeR,eyeL)/Math.max(eyeR,eyeL),
+    mouthOpen:d(p(13),p(14))/d(p(61),p(291)),
+    roll:Math.atan2(p(263)[1]-p(33)[1],p(263)[0]-p(33)[0])*180/Math.PI,
+    noseR:(p(1)[0]-p(234)[0])/(p(454)[0]-p(234)[0]),
+    faceFrac:H/h
+  };
+}
+function exp3D(lm,w,h){
+  const g=i=>[lm[i].x*w,lm[i].y*h,lm[i].z*w];
+  const d=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+  const a=g(58),b=g(288),c=g(152);
+  const u=[a[0]-c[0],a[1]-c[1],a[2]-c[2]],v=[b[0]-c[0],b[1]-c[1],b[2]-c[2]];
+  const chin=Math.acos(clamp((u[0]*v[0]+u[1]*v[1]+u[2]*v[2])/(Math.hypot(...u)*Math.hypot(...v)),-1,1))*180/Math.PI;
+  const l=g(234),r=g(454);
+  return {chin3D:chin, jaw3D:d(a,b)/d(l,r), yaw3:Math.atan2(r[2]-l[2],r[0]-l[0])*180/Math.PI};
+}
+// skin texture / colour spread / lighting / sharpness, front scans only
+function skinAndLight(canvas,lm){
+  const W=canvas.width,Hh=canvas.height, px=i=>[lm[i].x*W,lm[i].y*Hh];
+  const FH=Math.hypot(px(10)[0]-px(152)[0],px(10)[1]-px(152)[1]), k=500/FH;
+  const c=document.createElement('canvas'); c.width=Math.round(W*k); c.height=Math.round(Hh*k);
+  const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(canvas,0,0,c.width,c.height);
+  const S=i=>{const p=px(i);return [p[0]*k,p[1]*k];}, H=500;
+  const boxes=[]; // forehead, right cheek, left cheek
+  {const a=S(105),b=S(334),t=S(10); boxes.push(['f',Math.min(a[0],b[0]),t[1]+0.03*H,Math.abs(b[0]-a[0]),Math.min(a[1],b[1])-t[1]-0.07*H]);}
+  for(const [tag,z,n,e,m] of [['r',234,129,145,61],['l',454,358,374,291]]){
+    const zz=S(z),nn=S(n),ee=S(e),mm=S(m), x0=lerp(zz[0],nn[0],.3), x1=lerp(zz[0],nn[0],.8);
+    boxes.push([tag,Math.min(x0,x1),ee[1]+0.04*H,Math.abs(x1-x0),mm[1]-ee[1]-0.06*H]);
+  }
+  const tex=[],col=[],lap=[],luma={};
+  for(const [tag,bx,by,bw0,bh0] of boxes){
+    const x0=Math.max(0,Math.floor(bx)),y0=Math.max(0,Math.floor(by));
+    const ww=Math.min(Math.floor(bw0),c.width-x0),hh=Math.min(Math.floor(bh0),c.height-y0);
+    if(!(ww>=12&&hh>=12)) continue;
+    const d=x.getImageData(x0,y0,ww,hh).data, n=ww*hh, gray=new Float32Array(n);
+    let sRG=0,sRG2=0,sG=0;
+    for(let i=0;i<n;i++){const r=d[i*4],g=d[i*4+1],b=d[i*4+2];gray[i]=.299*r+.587*g+.114*b;sG+=gray[i];const rg=r-g;sRG+=rg;sRG2+=rg*rg;}
+    luma[tag]=sG/n; const mRG=sRG/n; col.push(Math.sqrt(Math.max(0,sRG2/n-mRG*mRG)));
+    let t=0,l=0,cnt=0;
+    for(let yy=2;yy<hh-2;yy++)for(let xx=2;xx<ww-2;xx++){
+      const i=yy*ww+xx;
+      t+=Math.abs(gray[i]-(gray[i-2]+gray[i+2]+gray[i-2*ww]+gray[i+2*ww])/4);
+      const L=4*gray[i]-gray[i-1]-gray[i+1]-gray[i-ww]-gray[i+ww]; l+=L*L; cnt++;
+    }
+    tex.push(t/cnt); lap.push(l/cnt);
+  }
+  if(!tex.length) return {};
+  const avg=a=>a.reduce((p,q)=>p+q)/a.length, ls=Object.values(luma);
+  const out={tex:avg(tex),col:avg(col),sharp:avg(lap),luma:avg(ls)};
+  if(luma.l!==undefined&&luma.r!==undefined) out.lr=Math.abs(luma.l-luma.r)/(luma.l+luma.r);
+  return out;
+}
+function summarise(samples){
+  const out={};
+  for(const k of Object.keys(samples[0].m)){
+    const vals=samples.map(s=>s.m[k]).filter(Number.isFinite);
+    if(vals.length) out[k]={v:median(vals),sd:sdev(vals),n:vals.length};
+  }
+  return out;
+}
+function issues(sum,key){
+  const g=k=>sum[k]?sum[k].v:NaN, L=[];
+  if(key==='front'){
+    if(Math.abs(g('roll'))>3) L.push(['Head tilted about '+Math.abs(g('roll')).toFixed(1)+'°. Level your head.']);
+    if(Math.abs(g('noseR')-0.5)>0.04) L.push(['Face is turned a little. Look straight into the lens.']);
+    if(g('mouthOpen')>0.06) L.push(['Mouth is open. Relax it closed.']);
+    if(g('eyeOpen')<0.18) L.push(['Eyes look partly closed (blink?).']);
+  }else{
+    const y=Math.abs(g('yaw3')); if(y<25||y>65) L.push(['Turn measures about '+y.toFixed(0)+'° (target roughly 45°).']);
+  }
+  if(g('faceFrac')<0.35) L.push(['Face is small in the frame. Move closer or crop.']);
+  if(g('faceFrac')>0.9) L.push(['Face fills the whole frame. Move back.']);
+  if(key==='front'){
+    if(g('luma')<70) L.push(['Image is dark.']);
+    if(g('luma')>195) L.push(['Image is very bright.']);
+    if(g('lr')>0.12) L.push(['Light is uneven between left and right cheeks.']);
+    if(g('sharp')<12) L.push(['Image looks soft or blurry.']);
+  }
+  return L.map(x=>x[0]);
+}
+
+/* ================= state & capture ================= */
+let step=0,scans={},stream=null,busy=false,lastRun=null;
+const live={ok:0,timer:null};
+
+function varyCanvases(c){
+  const out=[c], W=c.width,H=c.height;
+  for(const [s,dx,dy] of [[.9,0,0],[.8,.04,.03],[.9,-.04,-.03],[.85,.02,-.04]]){
+    const v=document.createElement('canvas'); v.width=W;v.height=H;
+    const x=v.getContext('2d'); x.fillStyle='#777'; x.fillRect(0,0,W,H);
+    x.drawImage(c,W*(1-s)/2+dx*W,H*(1-s)/2+dy*H,W*s,H*s); out.push(v);
+  }
+  return out;
+}
+function frame(maxDim){
+  const v=$('#video'),k=Math.min(1,maxDim/Math.max(v.videoWidth,v.videoHeight));
+  const c=document.createElement('canvas'); c.width=Math.round(v.videoWidth*k); c.height=Math.round(v.videoHeight*k);
+  c.getContext('2d').drawImage(v,0,0,c.width,c.height); return c;
+}
+async function frameFromFile(f){
+  let bmp; try{bmp=await createImageBitmap(f,{imageOrientation:'from-image'});}catch(e){bmp=await createImageBitmap(f);}
+  const k=Math.min(1,1280/Math.max(bmp.width,bmp.height)),c=document.createElement('canvas');
+  c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);return c;
+}
+async function startCam(){
+  $('#err').textContent='';
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:960}},audio:false});
+    const v=$('#video');v.srcObject=stream;await v.play();showLive();scheduleLive();
+  }catch(e){stream=null;$('#err').textContent='Camera unavailable ('+e.name+'). Use Upload photo, and open this page at http://localhost, not as a file.';controls();}
+}
+async function capture(timer){
+  if(busy||!stream) return;
+  if(timer){
+    busy=true;controls();const el=$('#count');el.classList.remove('hidden');
+    for(let i=5;i>0;i--){el.textContent=i;await new Promise(r=>setTimeout(r,1000));}
+    el.classList.add('hidden');busy=false;
+  }
+  busy=true;controls();$('#warn').textContent='Capturing 8 frames, hold still…';
+  const frames=[];
+  for(let i=0;i<8;i++){frames.push(frame(1280));await new Promise(r=>setTimeout(r,110));}
+  busy=false;
+  runScan(frames);
+}
+async function runScan(canvases){
+  const key=STEPS[step].key;
+  busy=true;controls();$('#err').textContent='';$('#warn').textContent='Measuring '+canvases.length+' samples…';
+  try{
+    const samples=[];
+    for(const c of canvases){
+      const r=await detect(c), lm=r.multiFaceLandmarks&&r.multiFaceLandmarks[0];
+      if(!lm) continue;
+      const m=Object.assign(metrics2D(lm,c.width,c.height),exp3D(lm,c.width,c.height),key==='front'?skinAndLight(c,lm):{});
+      samples.push({lm,w:c.width,h:c.height,m,canvas:c});
+    }
+    if(samples.length<Math.ceil(canvases.length/2)){
+      busy=false;$('#warn').textContent='';$('#err').textContent='Face not found reliably ('+samples.length+' of '+canvases.length+'). Check light and framing.';controls();return;
+    }
+    const mid=samples[Math.floor(samples.length/2)];
+    scans[key]={samples,sum:summarise(samples),url:mid.canvas.toDataURL('image/jpeg',.85),canvas:mid.canvas,lm:mid.lm};
+    busy=false;showLive();
+  }catch(e){busy=false;$('#warn').textContent='';$('#err').textContent='Landmark model failed: '+(e.message||e)+'. Keep the mp/ folder next to index.html and open the page via http://localhost.';controls();}
+}
+$('#fileCam').onchange=$('#file').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{runScan(varyCanvases(await frameFromFile(f)));}catch(err){$('#err').textContent='Could not read that image.';}
+};
+
+/* ================= live guidance ================= */
+function scheduleLive(){clearTimeout(live.timer);live.timer=setTimeout(liveTick,600);}
+async function liveTick(){
+  const key=STEPS[step].key;
+  if(!stream||busy||scans[key]||!$('#tab-scan')||$('#tab-scan').classList.contains('hidden')){scheduleLive();return;}
+  const v=$('#video'); if(!v.videoWidth){scheduleLive();return;}
+  try{
+    const c=frame(480),r=await detect(c);
+    if(busy){scheduleLive();return;}
+    const lm=r.multiFaceLandmarks&&r.multiFaceLandmarks[0], el=$('#live');
+    if(!lm){el.textContent='No face detected.';live.ok=0;}
+    else{
+      const m=Object.assign(metrics2D(lm,c.width,c.height),exp3D(lm,c.width,c.height));
+      const sum={};for(const k in m)sum[k]={v:m[k]};
+      const L=issues(sum,key).filter(t=>!/dark|bright|blurry|Light is uneven/.test(t));
+      if(L.length){el.textContent='Adjust: '+L[0];el.style.color='var(--mid)';live.ok=0;}
+      else{live.ok++;el.style.color='var(--good)';el.textContent='✓ Pose looks good'+($('#auto').checked?' (hold still…)':'');
+        if(live.ok>=3&&$('#auto').checked){live.ok=0;capture(false);return;}}
+    }
+  }catch(e){}
+  scheduleLive();
+}
+
+/* ================= scan UI ================= */
+function renderSteps(){
+  $('#steps').innerHTML=STEPS.map((s,i)=>`<div class="chip ${scans[s.key]?'done':''} ${i===step?'on':''}">${scans[s.key]?'✓ ':''}${s.label.replace(' (optional)','')}</div>`).join('');
+  $('#stepHint').textContent=STEPS[step].hint;
+}
+function controls(){
+  const key=STEPS[step].key,have=!!scans[key],c=[];
+  if(!stream)c.push(`<button id="bCam">Start camera</button>`);
+  else c.push(`<button id="bNow" ${busy||have?'disabled':''}>Capture</button><button class="sec" id="bTimer" ${busy||have?'disabled':''}>5s timer</button>`);
+  c.push(`<button id="bPhone" ${busy||have?'disabled':''}>Take photo</button><button class="sec" id="bUp" ${busy||have?'disabled':''}>Upload photo</button>`);
+  if(have)c.push(`<button class="sec" id="bRetake">Retake</button>`);
+  if(have&&step<2)c.push(`<button class="sec" id="bNext">${step===0?'Add side view':'Next angle'}</button>`);
+  if(scans.front)c.push(`<button id="bGo" ${busy?'disabled':''}>Analyse (${Object.keys(scans).length} scan${Object.keys(scans).length>1?'s':''})</button>`);
+  $('#controls').innerHTML=c.join('');
+  const on=(id,fn)=>{const e=$(id);if(e)e.onclick=fn;};
+  on('#bCam',startCam);on('#bNow',()=>capture(false));on('#bTimer',()=>capture(true));on('#bUp',()=>$('#file').click());on('#bPhone',()=>$('#fileCam').click());
+  on('#bRetake',()=>{delete scans[key];showLive();});on('#bNext',()=>{step++;showLive();});on('#bGo',analyseNow);
+}
+function showLive(){
+  $('#warn').textContent='';$('#err').textContent='';$('#qual').innerHTML='';
+  const key=STEPS[step].key,s=scans[key];
+  if(s){
+    $('#shot').src=s.url;$('#shot').classList.remove('hidden');$('#video').classList.add('hidden');$('#placeholder').classList.add('hidden');$('#oval').classList.add('hidden');
+    const L=issues(s.sum,key);
+    $('#qual').innerHTML=(L.length?L.map(t=>`<div class="q" style="color:var(--mid)">⚠ ${t}</div>`).join('')+'<div class="small">Retake for the cleanest numbers, or continue and read results with these caveats in mind.</div>':'<div class="q" style="color:var(--good)">✓ Capture quality looks fine.</div>')+
+      `<div class="small">${s.samples.length} samples measured.</div>`;
+    $('#live').textContent='';
+  }else{
+    $('#shot').classList.add('hidden');$('#oval').classList.remove('hidden');
+    if(stream){$('#video').classList.remove('hidden');$('#placeholder').classList.add('hidden');}
+    else{$('#video').classList.add('hidden');$('#placeholder').classList.remove('hidden');}
+  }
+  renderSteps();controls();
+}
+
+/* ================= results ================= */
+const GROUPS=[
+ {t:'Symmetry',items:[
+  {k:'asym',l:'Left-right offset',dp:2,u:'% of face height',w:'Average distance between mirrored landmark pairs, after levelling the face. Everyone is a little asymmetric. Pose, expression and hair move this number as much as bone does, so use it to compare yourself over time, not to judge.'}]},
+ {t:'Jaw and face shape',items:[
+  {k:'jawRatio',l:'Jaw width ÷ cheekbone width',dp:3,u:'',w:'Distance between the two lower-jaw mesh points over the widest cheek width. The jaw points are approximate, not clinician-marked.'},
+  {k:'chin2D',l:'Chin angle (front view)',dp:1,u:'°',w:'Angle at the chin between the two lower-jaw points. Smaller means a more V-shaped lower face in this photo.'},
+  {k:'faceWH',l:'Face width ÷ face height',dp:3,u:'',w:'Cheek width over forehead-top-to-chin height (mesh points, so not hairline to chin).'}]},
+ {t:'Eyes',items:[
+  {k:'eyeOpen',l:'Eye opening',dp:3,u:'',w:'Lid gap over eye width. Falls if you blink or squint, so it doubles as a quality check.'},
+  {k:'eyeMatch',l:'Left vs right eye width',dp:3,u:'',w:'1.000 means the two eye widths match.'},
+  {k:'canthal',l:'Inner-eye gap ÷ eye width',dp:3,u:'',w:'Descriptive only. The old "one eye apart" canon (1.0) rarely holds in real faces, so there is no grade.'}]},
+ {t:'Proportions vs published averages',items:[
+  {k:'ipdW',l:'Pupil gap ÷ cheek width',dp:3,u:'',ref:'Reference: about 0.46 (Pallett 2010, average of young white female faces, measured against ear-to-ear width).',w:'Your pupil gap over cheekbone width. The paper used a different width landmark, so expect a systematic offset. Context, not a target.'},
+  {k:'eyeMouth',l:'Eyes-to-mouth ÷ face length',dp:3,u:'',ref:'Reference: about 0.36 (Pallett 2010, measured against hairline-to-chin length).',w:'Mid-pupil to inner lip, over forehead-top-to-chin. The mesh has no hairline, so this runs higher than the paper\'s. Context, not a target.'}]}
+];
+const SKIN=[
+ {k:'tex',l:'Fine texture index',dp:2,u:'',w:'Pixel-level roughness on forehead and cheeks. Depends on lighting, camera and focus.'},
+ {k:'col',l:'Colour spread index',dp:2,u:'',w:'How much redness varies across the same patches.'}
+];
+const fmtv=(o,dp,u)=>o?`${o.v.toFixed(dp)}${u&&u.length<3?u:''}${o.sd!=null?` <span class="small">±${o.sd.toFixed(dp)}</span>`:''}`:'—';
+function row(it,sum){
+  const o=sum[it.k];
+  return `<div class="m"><div class="top"><span>${it.l}</span><span class="v">${fmtv(o,it.dp,it.u)}</span></div>${it.u&&it.u.length>=3?`<div class="small">${it.u}</div>`:''}${it.ref?`<div class="ref">${it.ref}</div>`:''}<div class="small">${it.w}</div></div>`;
+}
+function analyseNow(){
+  const f=scans.front,sum=f.sum;
+  const n=f.samples.length;
+  // store history (numbers only)
+  const rec={t:Date.now(),n,m:{}};
+  for(const k of ['asym','jawRatio','chin2D','faceWH','eyeOpen','eyeMatch','canthal','ipdW','eyeMouth','tex','col','luma','lr'])if(sum[k])rec.m[k]={v:sum[k].v,sd:sum[k].sd};
+  const hist=JSON.parse(localStorage.getItem('sculptlocal.v2')||'[]');hist.push(rec);
+  localStorage.setItem('sculptlocal.v2',JSON.stringify(hist.slice(-120)));
+  lastRun=rec;
+  renderResults();switchTab('results');renderTrendSel();drawTrend();
+}
+function renderResults(){
+  const f=scans.front; if(!f){return;}
+  const sum=f.sum,hist=JSON.parse(localStorage.getItem('sculptlocal.v2')||'[]');
+  const L=issues(sum,'front');
+  let h=`<div class="card"><h3>Capture quality</h3>${L.length?L.map(t=>`<div class="q" style="color:var(--mid)">⚠ ${t}</div>`).join('')+'<div class="small">Numbers from this scan carry extra error. Retake if you want to compare it with others.</div>':'<div class="q" style="color:var(--good)">✓ No pose, light or focus problems detected.</div>'}<div class="small">Each number below is the median of ${f.samples.length} samples. ± is the sample spread (SD). A wide ± means the measurement is unstable, so do not read much into it.</div></div>`;
+  for(const g of GROUPS) h+=`<div class="card"><h3>${g.t}</h3>${g.items.map(it=>row(it,sum)).join('')}</div>`;
+  h+=`<div class="card"><h3>Front scan with landmarks</h3><div class="small" style="margin-bottom:8px">Mesh, forehead-chin axis (dashed) and the paired points used for the symmetry check (green).</div><canvas id="overlay"></canvas></div>`;
+  // skin tracker comparability
+  let skinNote='';
+  const prev=hist.length>1?hist[hist.length-2]:null,cur=hist[hist.length-1];
+  if(prev&&prev.m.luma&&cur.m.luma){
+    const rel=Math.abs(prev.m.luma.v-cur.m.luma.v)/prev.m.luma.v, ok=rel<0.12&&(cur.m.lr?cur.m.lr.v<0.12:true)&&(prev.m.lr?prev.m.lr.v<0.12:true);
+    skinNote=ok?'Lighting is similar to your previous scan, so these two are roughly comparable.':'Lighting differs from your previous scan, so skin numbers are not comparable between the two.';
+  }
+  h+=`<div class="card"><h3>Skin tracker <span class="tag lo">self-comparison only</span></h3><div class="small">These are not a skin-health score and there is no "good" value. They only show whether your own skin looks smoother or more even <i>under the same lighting and camera</i>. Do not use them to judge a mole, rash or acne. See a doctor for those.${skinNote?'<br><b>'+skinNote+'</b>':''}</div>${SKIN.map(it=>row(it,sum)).join('')}<div class="small">Light level: ${sum.luma?sum.luma.v.toFixed(0):'—'} / 255. Left-right light imbalance: ${sum.lr?(sum.lr.v*100).toFixed(0)+'%':'—'}.</div></div>`;
+  // experimental 3D
+  const ks=Object.keys(scans), chin=ks.map(k=>scans[k].sum.chin3D&&scans[k].sum.chin3D.v).filter(Number.isFinite),jaw=ks.map(k=>scans[k].sum.jaw3D&&scans[k].sum.jaw3D.v).filter(Number.isFinite);
+  h+=`<div class="card"><h3>Experimental 3D <span class="tag lo">low confidence</span></h3><div class="small">Google's depth values come from synthetic training data, so treat these as rough. ${ks.length} scan(s).</div>
+   <div class="m"><div class="top"><span>Chin angle (3D)</span><span class="v">${chin.length?median(chin).toFixed(1)+'°':'—'}</span></div><div class="small">Same idea as the 2D chin angle but turn-independent in principle. Compare with the 2D value; if they disagree a lot, depth is unreliable.</div></div>
+   <div class="m"><div class="top"><span>Jaw ÷ cheek width (3D)</span><span class="v">${jaw.length?median(jaw).toFixed(3):'—'}</span></div></div></div>`;
+  h+=`<div class="row"><button id="again">New session</button><button class="sec" id="dl">Download this result (JSON)</button></div>`;
+  $('#resultsBody').innerHTML=h;
+  $('#again').onclick=()=>{scans={};step=0;showLive();switchTab('scan');};
+  $('#dl').onclick=()=>{const blob=new Blob([JSON.stringify({date:new Date().toISOString(),summary:sum},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='sculptlocal-result.json';a.click();};
+  drawOverlay();
+}
+function drawOverlay(){
+  const s=scans.front,c=$('#overlay'),src=s.canvas,k=Math.min(1,720/src.width);
+  c.width=Math.round(src.width*k);c.height=Math.round(src.height*k);
+  const x=c.getContext('2d');x.drawImage(src,0,0,c.width,c.height);
+  const pt=i=>[s.lm[i].x*c.width,s.lm[i].y*c.height];
+  if(typeof FACEMESH_TESSELATION!=='undefined'){x.strokeStyle='rgba(124,196,255,.28)';x.lineWidth=1;x.beginPath();for(const [a,b] of FACEMESH_TESSELATION){const p=pt(a),q=pt(b);x.moveTo(p[0],p[1]);x.lineTo(q[0],q[1]);}x.stroke();}
+  x.strokeStyle='rgba(255,207,107,.9)';x.setLineDash([6,5]);x.lineWidth=2;x.beginPath();const a=pt(10),b=pt(152);x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.stroke();x.setLineDash([]);
+  x.fillStyle='rgba(111,220,154,.95)';for(const [l,r] of PAIRS)for(const i of [l,r]){const p=pt(i);x.beginPath();x.arc(p[0],p[1],3,0,7);x.fill();}
+}
+
+/* ================= trends ================= */
+const TREND_KEYS=[['asym','Left-right offset (% face height)',2],['jawRatio','Jaw ÷ cheek width',3],['chin2D','Chin angle (°)',1],['faceWH','Face width ÷ height',3],['canthal','Inner-eye gap ÷ eye width',3],['ipdW','Pupil gap ÷ cheek width',3],['eyeMouth','Eyes-to-mouth ÷ face length',3],['tex','Skin texture index (same light only)',2],['col','Skin colour spread (same light only)',2]];
+const getHist=()=>JSON.parse(localStorage.getItem('sculptlocal.v2')||'[]');
+function renderTrendSel(){
+  const s=$('#trendSel'),cur=s.value;
+  s.innerHTML=TREND_KEYS.map(([k,l])=>`<option value="${k}">${l}</option>`).join('');
+  if(cur)s.value=cur;
+}
+function drawTrend(){
+  const k=$('#trendSel').value||TREND_KEYS[0][0],dp=TREND_KEYS.find(t=>t[0]===k)[2];
+  const H=getHist().filter(r=>r.m[k]);
+  const c=$('#trend'),W=c.width=720,Hh=c.height=260,x=c.getContext('2d');
+  x.fillStyle='#000';x.fillRect(0,0,W,Hh);
+  const note=$('#trendNote');
+  if(H.length<1){x.fillStyle='#8b93a7';x.font='16px sans-serif';x.fillText('No scans yet',20,40);note.textContent='';return;}
+  const vals=H.flatMap(r=>[r.m[k].v-(r.m[k].sd||0)*2,r.m[k].v+(r.m[k].sd||0)*2]);
+  let lo=Math.min(...vals),hi=Math.max(...vals);if(hi-lo<1e-9){lo-=1;hi+=1;}const pad=(hi-lo)*.15;lo-=pad;hi+=pad;
+  const X=i=>40+(H.length===1?320:i*(W-70)/(H.length-1)),Y=v=>Hh-30-(v-lo)/(hi-lo)*(Hh-60);
+  x.strokeStyle='#262b36';x.fillStyle='#8b93a7';x.font='11px sans-serif';
+  for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Y(v);x.beginPath();x.moveTo(40,y);x.lineTo(W-10,y);x.stroke();x.fillText(v.toFixed(dp),2,y+4);}
+  x.strokeStyle='#7cc4ff';x.lineWidth=2;x.beginPath();H.forEach((r,i)=>{const px=X(i),py=Y(r.m[k].v);i?x.lineTo(px,py):x.moveTo(px,py);});x.stroke();
+  H.forEach((r,i)=>{
+    const px=X(i),py=Y(r.m[k].v),sd=r.m[k].sd;
+    if(sd!=null){x.strokeStyle='rgba(255,207,107,.9)';x.lineWidth=1.5;x.beginPath();x.moveTo(px,Y(r.m[k].v-2*sd));x.lineTo(px,Y(r.m[k].v+2*sd));x.stroke();}
+    x.fillStyle='#e8eaf0';x.beginPath();x.arc(px,py,4,0,7);x.fill();
+    x.fillStyle='#8b93a7';x.fillText(new Date(r.t).toLocaleDateString(undefined,{month:'short',day:'numeric'}),px-16,Hh-10);
+  });
+  if(H.length<2){note.textContent='One session so far. Bars show ±2 SD of that session\'s measurement noise.';return;}
+  const a=H[H.length-2].m[k],b=H[H.length-1].m[k],d=b.v-a.v;
+  if(a.sd==null||b.sd==null){note.textContent='Change since last session: '+d.toFixed(dp)+'. No noise estimate for one of them, so this can\'t be called real.';return;}
+  const noise=2*Math.sqrt(a.sd*a.sd+b.sd*b.sd);
+  let txt='Change since last session: '+(d>=0?'+':'')+d.toFixed(dp)+' (noise threshold ±'+noise.toFixed(dp)+'). '+(Math.abs(d)>noise?'This is larger than measurement noise.':'This is within measurement noise, so treat it as no detectable change.');
+  if(k==='tex'||k==='col'){const pa=H[H.length-2].m,pb=H[H.length-1].m;if(pa.luma&&pb.luma&&Math.abs(pa.luma.v-pb.luma.v)/pa.luma.v>=0.12)txt+=' Lighting differed between these two scans, so skin numbers are not comparable.';}
+  note.textContent=txt;
+}
+$('#trendSel').onchange=drawTrend;
+$('#clr').onclick=()=>{if(confirm('Delete all saved scores?')){localStorage.removeItem('sculptlocal.v2');drawTrend();}};
+$('#csv').onclick=()=>{
+  const H=getHist(),keys=TREND_KEYS.map(t=>t[0]).concat(['luma','lr']);
+  const rows=[['date','n'].concat(keys.flatMap(k=>[k,k+'_sd'])).join(',')];
+  for(const r of H)rows.push([new Date(r.t).toISOString(),r.n].concat(keys.flatMap(k=>r.m[k]?[r.m[k].v,r.m[k].sd??'']:['',''])).join(','));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/csv'}));a.download='sculptlocal-history.csv';a.click();
+};
+
+/* ================= tabs ================= */
+function switchTab(t){
+  for(const b of document.querySelectorAll('nav button')){b.classList.toggle('on',b.dataset.tab===t);b.classList.toggle('sec',b.dataset.tab!==t);}
+  for(const id of ['scan','results','trends','science'])$('#tab-'+id).classList.toggle('hidden',id!==t);
+  if(t==='trends'){renderTrendSel();drawTrend();}
+  if(t==='scan')scheduleLive();
+}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+renderTrendSel();showLive();
+</script>
+</body>
+</html>
